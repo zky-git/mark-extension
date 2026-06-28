@@ -9,10 +9,8 @@
     "tabs",
     "contextMenus",
     "scripting",
-    "activeTab"
-  ],
-  "host_permissions": [
-    "<all_urls>"
+    "activeTab",
+    "webNavigation"
   ],
   "background": {
     "service_worker": "service-worker.js"

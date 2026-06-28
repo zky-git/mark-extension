@@ -127,6 +127,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         case 'SAVE_SETTINGS':
           sendResponse(await saveSettings(message.payload));
           break;
+        case 'GET_DUE_REVIEWS':
+          sendResponse(await getDueReviews());
+          break;
+        case 'UPDATE_REVIEW_RESULT':
+          sendResponse(await updateReviewResult(message.payload.id, message.payload.quality));
+          break;
+        case 'UPDATE_HIGHLIGHT_TAGS':
+          sendResponse(await updateHighlightTags(message.payload.id, message.payload.tags));
+          break;
         case 'TOGGLE_SIDE_PANEL':
           const windowId = sender.tab?.windowId;
           if (!windowId) {
@@ -345,3 +354,91 @@ async function saveSettings(settings) {
   await setStorage('settings', settings);
   return { success: true };
 }
+
+// ─── Review (SM-2 Spaced Repetition) ─────────────────────────────────────────
+
+/**
+ * Standard SM-2 algorithm.
+ * quality: 5 = remembered, 3 = fuzzy, 1 = forgot
+ */
+function computeSM2(sm2, quality) {
+  let { interval, easeFactor, repetitions } = sm2;
+
+  if (quality >= 3) {
+    if (repetitions === 0) {
+      interval = 1;
+    } else if (repetitions === 1) {
+      interval = 6;
+    } else {
+      interval = Math.round(interval * easeFactor);
+    }
+    repetitions += 1;
+    easeFactor = Math.max(1.3, easeFactor + 0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+  } else {
+    // Failed recall — reset
+    repetitions = 0;
+    interval = 1;
+  }
+
+  const nextReviewAt = Date.now() + interval * 24 * 60 * 60 * 1000;
+  return { interval, easeFactor, repetitions, nextReviewAt };
+}
+
+async function getDueReviews() {
+  const highlights = (await getStorage('highlights')) || {};
+  const settings = await getSettings();
+  const reviewTag = (settings.reviewTag || '学习').trim();
+  const now = Date.now();
+
+  const due = Object.values(highlights).filter(h => {
+    if (!h.active) return false;
+    const tags = h.tags || [];
+    if (!tags.includes(reviewTag)) return false;
+    if (!h.sm2) return true; // never reviewed — due immediately
+    return h.sm2.nextReviewAt <= now;
+  });
+
+  return due.sort((a, b) => {
+    const aNext = a.sm2?.nextReviewAt || 0;
+    const bNext = b.sm2?.nextReviewAt || 0;
+    return aNext - bNext;
+  });
+}
+
+async function updateReviewResult(id, quality) {
+  const highlights = (await getStorage('highlights')) || {};
+  if (!highlights[id]) return { success: false, error: 'Highlight not found' };
+
+  const current = highlights[id].sm2 || { interval: 0, easeFactor: 2.5, repetitions: 0, nextReviewAt: 0 };
+  highlights[id].sm2 = computeSM2(current, quality);
+  await setStorage('highlights', highlights);
+  return { success: true, sm2: highlights[id].sm2 };
+}
+
+async function updateHighlightTags(id, tags) {
+  const highlights = (await getStorage('highlights')) || {};
+  if (!highlights[id]) return { success: false, error: 'Highlight not found' };
+  highlights[id].tags = tags;
+  await setStorage('highlights', highlights);
+  return { success: true };
+}
+
+// ─── SPA Navigation Listener ──────────────────────────────────────────────────
+
+chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
+  if (details.frameId === 0) {
+    chrome.tabs.sendMessage(
+      details.tabId,
+      {
+        type: 'SPA_NAVIGATION',
+        url: details.url,
+      },
+      () => {
+        // Accessing chrome.runtime.lastError clears the error state
+        if (chrome.runtime.lastError) {
+          // Tab is not ready or content script is not injected (e.g. chrome:// or store pages)
+        }
+      }
+    );
+  }
+});

@@ -12,6 +12,12 @@
   let searchQuery = '';
   let pendingTagUrl = null; // which bookmark the tag modal is targeting
   let groupByDomain = true; // default: group enabled
+  let sortBy = 'time-desc'; // default: newest first
+
+  // Review state
+  let reviewQueue = [];       // Due highlights for today
+  let reviewIndex = 0;        // Current card index
+  let reviewSession = { remembered: 0, fuzzy: 0, forgot: 0 }; // Session stats
 
 
   // ─── SW Connection to Track Open State ────────────────────────────────────────
@@ -43,32 +49,85 @@
   // ─── Data Loading ─────────────────────────────────────────────────────────────
 
   async function loadAll() {
-    const [bookmarksResp, tagsResp, settingsResp, groupResp] = await Promise.all([
+    const [bookmarksResp, tagsResp, settingsResp, groupResp, sortResp] = await Promise.all([
       sendMessage('GET_ALL_BOOKMARKS'),
       sendMessage('GET_ALL_TAGS'),
       sendMessage('GET_SETTINGS'),
-      new Promise(resolve => {
-        chrome.storage.local.get('groupByDomain', (r) => resolve(r));
-      }),
-    ]);
+      chrome.storage.local.get('groupByDomain').catch(() => ({})),
+      chrome.storage.local.get('sortBy').catch(() => ({})),
+    ]).catch(err => {
+      console.error('[MarkBuddy Panel] Failed to load data:', err);
+      return [[], [], null, {}, {}];
+    });
 
     allBookmarks = bookmarksResp || [];
     allTags = tagsResp || [];
     if (settingsResp) settings = settingsResp;
 
     // groupByDomain defaults to true if never saved
-    groupByDomain = groupResp.groupByDomain !== false;
+    groupByDomain = !groupResp || groupResp.groupByDomain !== false;
     const checkbox = document.getElementById('group-by-domain-checkbox');
     if (checkbox) checkbox.checked = groupByDomain;
+
+    // sortBy defaults to 'time-desc' if never saved
+    sortBy = (sortResp && sortResp.sortBy) || 'time-desc';
+    const sortSelect = document.getElementById('sort-select');
+    if (sortSelect) sortSelect.value = sortBy;
 
     renderTagsBar();
     renderColorGrid();
     renderList();
     updateStats();
+
+    // Restore review tag field from saved settings
+    const reviewTagInput = document.getElementById('review-tag-input');
+    if (reviewTagInput && settings.reviewTag) reviewTagInput.value = settings.reviewTag;
+
+    // Refresh review banner count
+    updateReviewBanner();
   }
 
 
   // ─── Filtering / Searching ────────────────────────────────────────────────────
+
+  function getFilteredBookmarksForTags() {
+    let list = allBookmarks;
+
+    // Search filter
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(bm => {
+        const inTitle = bm.title?.toLowerCase().includes(q);
+        const inUrl = bm.url?.toLowerCase().includes(q);
+        const inHighlights = (bm.highlights || []).some(h => {
+          const inText = h.text?.toLowerCase().includes(q);
+          const inNote = h.note?.toLowerCase().includes(q);
+          return inText || inNote;
+        });
+        return inTitle || inUrl || inHighlights;
+      });
+    }
+
+    return list;
+  }
+
+  function getDynamicTags() {
+    const list = getFilteredBookmarksForTags();
+    const counts = {};
+    list.forEach(bm => {
+      (bm.tags || []).forEach(tag => {
+        counts[tag] = (counts[tag] || 0) + 1;
+      });
+    });
+
+    // Sort by count descending, then alphabetically
+    return Object.keys(counts).sort((a, b) => {
+      if (counts[b] !== counts[a]) {
+        return counts[b] - counts[a];
+      }
+      return a.localeCompare(b);
+    });
+  }
 
   function getFilteredBookmarks() {
     let list = allBookmarks;
@@ -95,6 +154,29 @@
       });
     }
 
+    // Sorting
+    list = [...list]; // create shallow copy to avoid mutating cache
+    list.sort((a, b) => {
+      if (sortBy === 'time-asc') {
+        return (a.savedAt || 0) - (b.savedAt || 0);
+      }
+      if (sortBy === 'modified-desc') {
+        const aMod = a.highlights && a.highlights.length > 0 ? Math.max(a.savedAt || 0, a.highlights[0].savedAt || 0) : (a.savedAt || 0);
+        const bMod = b.highlights && b.highlights.length > 0 ? Math.max(b.savedAt || 0, b.highlights[0].savedAt || 0) : (b.savedAt || 0);
+        return bMod - aMod;
+      }
+      if (sortBy === 'domain-asc' || sortBy === 'domain-desc') {
+        let domainA = a.url || '';
+        let domainB = b.url || '';
+        try { domainA = new URL(a.url).hostname.toLowerCase(); } catch {}
+        try { domainB = new URL(b.url).hostname.toLowerCase(); } catch {}
+        const cmp = domainA.localeCompare(domainB);
+        return sortBy === 'domain-asc' ? cmp : -cmp;
+      }
+      // default: time-desc
+      return (b.savedAt || 0) - (a.savedAt || 0);
+    });
+
     return list;
   }
 
@@ -104,6 +186,17 @@
     const bar = document.getElementById('tags-bar');
     // Remove all non-"全部" chips
     bar.querySelectorAll('.tag-chip:not(#tag-all)').forEach(el => el.remove());
+
+    // Dynamically calculate tags based on list items
+    allTags = getDynamicTags();
+
+    // Clean up active filters that no longer exist
+    const tagSet = new Set(allTags);
+    activeTagFilters.forEach(tag => {
+      if (!tagSet.has(tag)) {
+        activeTagFilters.delete(tag);
+      }
+    });
 
     allTags.forEach(tag => {
       const chip = document.createElement('div');
@@ -121,7 +214,7 @@
       deleteBtn.title = '删除标签';
       deleteBtn.addEventListener('click', async (e) => {
         e.stopPropagation(); // Prevent toggling the filter
-        if (confirm(`确定要彻底删除标签 "${tag}" 吗？此操作将从所有已收藏的内容中移除该标签。`)) {
+        if (await showCustomConfirm(`确定要彻底删除标签 "${tag}" 吗？此操作将从所有已收藏的内容中移除该标签。`, '确认删除标签')) {
           await sendMessage('DELETE_TAG', { tag });
           if (activeTagFilters.has(tag)) {
             activeTagFilters.delete(tag);
@@ -369,9 +462,11 @@
         <line x1="14" y1="11" x2="14" y2="17"></line>
       </svg>
     `;
-    deleteBtn.addEventListener('click', (e) => {
+    deleteBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
-      deleteBookmark(bm.url, card);
+      if (await showCustomConfirm('确定要删除此收藏吗？此网页下的所有高亮划线也将一同被删除。', '确认删除收藏')) {
+        deleteBookmark(bm.url, card);
+      }
     });
     header.appendChild(deleteBtn);
 
@@ -384,13 +479,31 @@
     (bm.tags || []).forEach(tag => {
       const tagEl = document.createElement('span');
       tagEl.className = 'card-tag';
-      tagEl.textContent = tag;
-      tagEl.addEventListener('click', () => {
+      
+      const tagText = document.createElement('span');
+      tagText.className = 'card-tag-name';
+      tagText.textContent = tag;
+      tagText.addEventListener('click', (e) => {
+        e.stopPropagation();
         activeTagFilters.add(tag);
         renderTagsBar();
         renderList();
         updateStats();
       });
+      tagEl.appendChild(tagText);
+
+      const tagDeleteBtn = document.createElement('span');
+      tagDeleteBtn.className = 'card-tag-delete';
+      tagDeleteBtn.textContent = '×';
+      tagDeleteBtn.title = '从该网页移除此标签';
+      tagDeleteBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const updatedTags = (bm.tags || []).filter(t => t !== tag);
+        await sendMessage('UPDATE_BOOKMARK_TAGS', { url: bm.url, tags: updatedTags });
+        await loadAll();
+      });
+      tagEl.appendChild(tagDeleteBtn);
+
       tagsRow.appendChild(tagEl);
     });
 
@@ -649,6 +762,42 @@
     await loadAll();
   }
 
+  function showCustomConfirm(message, title = '确认操作') {
+    return new Promise((resolve) => {
+      const dialog = document.getElementById('custom-confirm-dialog');
+      const titleEl = document.getElementById('confirm-title');
+      const msgEl = document.getElementById('confirm-message');
+      const okBtn = document.getElementById('confirm-ok');
+      const cancelBtn = document.getElementById('confirm-cancel');
+
+      if (titleEl) titleEl.textContent = title;
+      msgEl.textContent = message;
+      
+      const handleOk = () => {
+        cleanup();
+        resolve(true);
+      };
+      
+      const handleCancel = () => {
+        cleanup();
+        resolve(false);
+      };
+
+      const cleanup = () => {
+        okBtn.removeEventListener('click', handleOk);
+        cancelBtn.removeEventListener('click', handleCancel);
+        dialog.removeEventListener('cancel', handleCancel);
+        dialog.close();
+      };
+
+      okBtn.addEventListener('click', handleOk);
+      cancelBtn.addEventListener('click', handleCancel);
+      dialog.addEventListener('cancel', handleCancel);
+
+      dialog.showModal();
+    });
+  }
+
   // ─── Tag Modal ────────────────────────────────────────────────────────────────
 
   function openTagModal(bm) {
@@ -736,7 +885,13 @@
   // Settings toggle
   document.getElementById('settings-toggle-btn').addEventListener('click', () => {
     const panel = document.getElementById('settings-panel');
-    panel.classList.toggle('hidden');
+    panel.classList.remove('hidden');
+  });
+
+  // Settings back button
+  document.getElementById('settings-back-btn').addEventListener('click', () => {
+    const panel = document.getElementById('settings-panel');
+    panel.classList.add('hidden');
   });
 
   // Add custom color
@@ -757,6 +912,7 @@
   searchInput.addEventListener('input', () => {
     searchQuery = searchInput.value.trim();
     searchClear.classList.toggle('hidden', !searchQuery);
+    renderTagsBar();
     renderList();
     updateStats();
   });
@@ -765,6 +921,7 @@
     searchInput.value = '';
     searchQuery = '';
     searchClear.classList.add('hidden');
+    renderTagsBar();
     renderList();
     updateStats();
   });
@@ -804,11 +961,191 @@
   // Group-by-domain switch
   document.getElementById('group-by-domain-checkbox').addEventListener('change', async (e) => {
     groupByDomain = e.target.checked;
-    await new Promise(resolve => {
-      chrome.storage.local.set({ groupByDomain }, resolve);
-    });
+    await chrome.storage.local.set({ groupByDomain }).catch(() => {});
     renderList();
   });
+
+  // Sort selection dropdown change listener
+  const sortSelect = document.getElementById('sort-select');
+  if (sortSelect) {
+    sortSelect.addEventListener('change', async (e) => {
+      sortBy = e.target.value;
+      await chrome.storage.local.set({ sortBy }).catch(() => {});
+      renderList();
+    });
+  }
+
+  // ─── Review Banner ────────────────────────────────────────────────────────────
+
+  async function updateReviewBanner() {
+    const due = await sendMessage('GET_DUE_REVIEWS');
+    const banner = document.getElementById('review-banner');
+    const bannerText = document.getElementById('review-banner-text');
+    if (!banner) return;
+    if (due && due.length > 0) {
+      bannerText.textContent = `今日待复习 ${due.length} 条`;
+      banner.classList.remove('hidden');
+    } else {
+      banner.classList.add('hidden');
+    }
+  }
+
+  // ─── Review Mode ──────────────────────────────────────────────────────────────
+
+  function showMainView() {
+    document.getElementById('review-mode').classList.add('hidden');
+  }
+
+  async function startReviewMode() {
+    const due = await sendMessage('GET_DUE_REVIEWS');
+    if (!due || due.length === 0) return;
+
+    reviewQueue = due;
+    reviewIndex = 0;
+    reviewSession = { remembered: 0, fuzzy: 0, forgot: 0 };
+
+    document.getElementById('review-summary').classList.add('hidden');
+    document.getElementById('review-card-area').style.display = '';
+    document.getElementById('review-jump-wrap').style.display = '';
+    document.getElementById('review-score-btns').style.display = '';
+    document.getElementById('review-mode').classList.remove('hidden');
+
+    renderReviewCard();
+  }
+
+  function renderReviewCard() {
+    const total = reviewQueue.length;
+    const current = reviewQueue[reviewIndex];
+
+    // Progress
+    const pct = total > 0 ? (reviewIndex / total) * 100 : 0;
+    document.getElementById('review-progress-fill').style.width = `${pct}%`;
+    document.getElementById('review-counter').textContent = `${reviewIndex + 1} / ${total} 条待复习`;
+
+    // Card content
+    document.getElementById('review-card-text').textContent = current.text || '';
+
+    // Source domain
+    let domain = current.url || '';
+    try { domain = new URL(current.url).hostname; } catch {}
+    document.getElementById('review-card-source').textContent = domain;
+
+    // Note handling
+    const noteEl = document.getElementById('review-card-note');
+    const revealBtn = document.getElementById('review-reveal-note-btn');
+    if (current.note && current.note.trim()) {
+      noteEl.textContent = current.note;
+      noteEl.classList.add('hidden');
+      revealBtn.classList.remove('hidden');
+    } else {
+      noteEl.classList.add('hidden');
+      revealBtn.classList.add('hidden');
+    }
+
+    // Store current highlight url for jump button
+    document.getElementById('review-jump-btn').dataset.url = current.url || '';
+    document.getElementById('review-jump-btn').dataset.highlightId = current.id || '';
+  }
+
+  async function submitReview(quality) {
+    const current = reviewQueue[reviewIndex];
+    await sendMessage('UPDATE_REVIEW_RESULT', { id: current.id, quality });
+
+    if (quality === 5) reviewSession.remembered++;
+    else if (quality === 3) reviewSession.fuzzy++;
+    else reviewSession.forgot++;
+
+    reviewIndex++;
+
+    if (reviewIndex >= reviewQueue.length) {
+      showReviewSummary();
+    } else {
+      renderReviewCard();
+    }
+  }
+
+  function showReviewSummary() {
+    const total = reviewQueue.length;
+    const { remembered, fuzzy, forgot } = reviewSession;
+    const memRate = total > 0 ? Math.round((remembered / total) * 100) : 0;
+
+    // Progress bar to 100%
+    document.getElementById('review-progress-fill').style.width = '100%';
+
+    // Hide card, show summary
+    document.getElementById('review-card-area').style.display = 'none';
+    document.getElementById('review-jump-wrap').style.display = 'none';
+    document.getElementById('review-score-btns').style.display = 'none';
+
+    const statsEl = document.getElementById('review-summary-stats');
+    statsEl.innerHTML = [
+      `<div class="review-summary-row"><span class="label">完成</span><span class="value">${total} 条</span></div>`,
+      `<div class="review-summary-row"><span class="label">记住了</span><span class="value good">${remembered} 条（${memRate}%）</span></div>`,
+      `<div class="review-summary-row"><span class="label">模糊</span><span class="value warn">${fuzzy} 条</span></div>`,
+      `<div class="review-summary-row"><span class="label">没记住</span><span class="value bad">${forgot} 条</span></div>`,
+    ].join('');
+
+    document.getElementById('review-summary').classList.remove('hidden');
+    document.getElementById('review-counter').textContent = '复习完成 🎉';
+  }
+
+  // ─── Review Event Listeners ───────────────────────────────────────────────────
+
+  document.getElementById('review-start-btn').addEventListener('click', startReviewMode);
+
+  document.getElementById('review-exit-btn').addEventListener('click', () => {
+    showMainView();
+    updateReviewBanner();
+  });
+
+  document.getElementById('review-summary-close-btn').addEventListener('click', () => {
+    showMainView();
+    updateReviewBanner();
+  });
+
+  document.getElementById('score-remembered').addEventListener('click', () => submitReview(5));
+  document.getElementById('score-fuzzy').addEventListener('click', () => submitReview(3));
+  document.getElementById('score-forgot').addEventListener('click', () => submitReview(1));
+
+  document.getElementById('review-reveal-note-btn').addEventListener('click', () => {
+    document.getElementById('review-card-note').classList.remove('hidden');
+    document.getElementById('review-reveal-note-btn').classList.add('hidden');
+  });
+
+  document.getElementById('review-jump-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('review-jump-btn');
+    const url = btn.dataset.url;
+    const highlightId = btn.dataset.highlightId;
+    if (!url) return;
+    // Open in new tab and scroll to highlight
+    const [tab] = await chrome.tabs.query({ url: url + '*', currentWindow: true }).catch(() => []);
+    if (tab) {
+      await chrome.tabs.update(tab.id, { active: true });
+      if (highlightId) {
+        setTimeout(() => {
+          chrome.tabs.sendMessage(tab.id, { type: 'SCROLL_TO_HIGHLIGHT', highlightId }, () => {
+            if (chrome.runtime.lastError) {}
+          });
+        }, 300);
+      }
+    } else {
+      chrome.tabs.create({ url });
+    }
+  });
+
+  // Review tag input — save on blur/enter
+  const reviewTagInput = document.getElementById('review-tag-input');
+  if (reviewTagInput) {
+    const saveReviewTag = async () => {
+      const tag = reviewTagInput.value.trim();
+      if (!tag) { reviewTagInput.value = '学习'; return; }
+      settings.reviewTag = tag;
+      await sendMessage('SAVE_SETTINGS', settings);
+      updateReviewBanner();
+    };
+    reviewTagInput.addEventListener('blur', saveReviewTag);
+    reviewTagInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') reviewTagInput.blur(); });
+  }
 
   // ─── Init ─────────────────────────────────────────────────────────────────────
 

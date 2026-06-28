@@ -310,6 +310,34 @@
     showToast('🗑️ 划线已删除');
   }
 
+  function clearDOMHighlights() {
+    const marks = document.querySelectorAll('.markbuddy-highlight');
+    const parentsToNormalize = new Set();
+    marks.forEach(markEl => {
+      if (!markEl || !markEl.parentNode) return;
+      const parent = markEl.parentNode;
+      parentsToNormalize.add(parent);
+      while (markEl.firstChild) {
+        if (markEl.firstChild.classList?.contains('markbuddy-delete-btn')) {
+          markEl.removeChild(markEl.firstChild);
+        } else {
+          parent.insertBefore(markEl.firstChild, markEl);
+        }
+      }
+      parent.removeChild(markEl);
+    });
+    parentsToNormalize.forEach(parent => {
+      try {
+        parent.normalize();
+      } catch (e) {
+        // ignore normalization errors
+      }
+    });
+    pageHighlights = [];
+    hideNotePopover();
+    hideHoverTooltip();
+  }
+
   // ─── Annotation Popover & Tooltip Helpers ────────────────────────────────────
 
   let tooltipEl = null;
@@ -512,6 +540,7 @@
     for (let i = 0; i < highlights.length; i += BATCH) {
       await new Promise(r => requestAnimationFrame(() => {
         highlights.slice(i, i + BATCH).forEach(h => {
+          if (document.querySelector(`.markbuddy-highlight[data-id="${h.id}"]`)) return;
           try {
             const range = deserializeRange(h.serializedRange);
             if (range && !range.collapsed) {
@@ -804,6 +833,13 @@
           mark.style.backgroundColor = originalBg;
         }, 1000);
       }
+      sendResponse({ success: true });
+    } else if (message.type === 'SPA_NAVIGATION') {
+      clearDOMHighlights();
+      restoreHighlights();
+      setTimeout(restoreHighlights, 300);
+      setTimeout(restoreHighlights, 800);
+      setTimeout(restoreHighlights, 1500);
       sendResponse({ success: true });
     }
   });

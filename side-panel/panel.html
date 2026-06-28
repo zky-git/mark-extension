@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="panel.css" />
+  <link rel="stylesheet" href="review.css" />
 </head>
 <body>
   <!-- Header -->
@@ -27,30 +28,78 @@
 
   <!-- Settings Panel (hidden by default) -->
   <div class="settings-panel hidden" id="settings-panel" role="region" aria-label="设置面板">
-    <div class="settings-section">
-      <label class="settings-label">默认高亮颜色</label>
-      <div class="color-grid" id="color-grid"></div>
+    <div class="settings-header">
+      <button class="icon-btn back-btn" id="settings-back-btn" title="返回" aria-label="返回主面板">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+      </button>
+      <span class="settings-panel-title">设置</span>
     </div>
-    <div class="settings-section">
-      <label class="settings-label">添加自定义颜色</label>
-      <div class="custom-color-row">
-        <input type="color" id="custom-color-input" value="#FFD700" aria-label="自定义颜色" />
-        <button class="btn-secondary" id="add-color-btn">添加</button>
+    <div class="settings-body">
+      <div class="settings-section">
+        <label class="settings-label">默认高亮颜色</label>
+        <div class="color-grid" id="color-grid"></div>
+      </div>
+      <div class="settings-section">
+        <label class="settings-label">添加自定义颜色</label>
+        <div class="custom-color-row">
+          <input type="color" id="custom-color-input" value="#FFD700" aria-label="自定义颜色" />
+          <button class="btn-secondary" id="add-color-btn">添加</button>
+        </div>
+      </div>
+      <div class="settings-divider"></div>
+      <div class="settings-section settings-row">
+        <div class="settings-row-info">
+          <span class="settings-row-label">按域名分组</span>
+          <span class="settings-row-desc">将收藏按网站域名归类显示</span>
+        </div>
+        <label class="switch" id="group-by-domain-switch" aria-label="按域名分组">
+          <input type="checkbox" id="group-by-domain-checkbox" checked />
+          <span class="switch-track">
+            <span class="switch-thumb"></span>
+          </span>
+        </label>
+      </div>
+      <div class="settings-divider"></div>
+      <div class="settings-section settings-row">
+        <div class="settings-row-info">
+          <span class="settings-row-label">
+            复习标签
+            <span class="info-tooltip-wrap">
+              <span class="info-icon">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="16" x2="12" y2="12"></line>
+                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+              </span>
+              <span class="info-tooltip-content">
+                <span class="tooltip-title"><span class="tooltip-emoji">🧠</span>艾宾浩斯复习策略 (SM-2)</span>
+                <ul class="tooltip-list">
+                  <li>带有该标签的网页划线会自动安排每日复习</li>
+                  <li>每次复习通过三挡打分反馈您真实的记忆状态</li>
+                  <li>算法动态拉长复习周期，用最少回顾实现长期记忆</li>
+                </ul>
+              </span>
+            </span>
+          </span>
+          <span class="settings-row-desc">打上此标签的划线将加入复习队列</span>
+        </div>
+        <div class="review-tag-wrap">
+          <span class="review-tag-hash">#</span>
+          <input type="text" id="review-tag-input" class="review-tag-field" value="学习" maxlength="12" />
+        </div>
       </div>
     </div>
-    <div class="settings-divider"></div>
-    <div class="settings-section settings-row">
-      <div class="settings-row-info">
-        <span class="settings-row-label">按域名分组</span>
-        <span class="settings-row-desc">将收藏按网站域名归类显示</span>
-      </div>
-      <label class="switch" id="group-by-domain-switch" aria-label="按域名分组">
-        <input type="checkbox" id="group-by-domain-checkbox" checked />
-        <span class="switch-track">
-          <span class="switch-thumb"></span>
-        </span>
-      </label>
-    </div>
+  </div>
+
+  <!-- Review Banner (hidden when no due items) -->
+  <div class="review-banner hidden" id="review-banner">
+    <span class="review-banner-icon">📖</span>
+    <span class="review-banner-text" id="review-banner-text">今日待复习 0 条</span>
+    <button class="review-banner-btn" id="review-start-btn">开始</button>
   </div>
 
   <!-- Search + Filter -->
@@ -77,6 +126,16 @@
   <!-- Stats bar -->
   <div class="stats-bar" id="stats-bar">
     <span id="stats-text">加载中…</span>
+    <div class="sort-selector-wrap">
+      <label for="sort-select" class="sort-label">排序:</label>
+      <select id="sort-select" class="sort-select">
+        <option value="time-desc">最新收藏</option>
+        <option value="time-asc">最早收藏</option>
+        <option value="modified-desc">最近修改</option>
+        <option value="domain-asc">按域名 (A-Z)</option>
+        <option value="domain-desc">按域名 (Z-A)</option>
+      </select>
+    </div>
   </div>
 
   <!-- Bookmark List -->
@@ -104,6 +163,65 @@
     <div class="modal-actions">
       <button class="btn-primary" id="modal-confirm">确认</button>
       <button class="btn-secondary" id="modal-cancel">取消</button>
+    </div>
+  </dialog>
+
+  <!-- Fullscreen Review Mode (hidden by default) -->
+  <div class="review-mode hidden" id="review-mode" role="main" aria-label="复习模式">
+    <!-- Review Progress -->
+    <div class="review-progress-bar">
+      <div class="review-progress-fill" id="review-progress-fill"></div>
+    </div>
+    <div class="review-header">
+      <span class="review-counter" id="review-counter">0 / 0</span>
+      <button class="review-exit-btn" id="review-exit-btn" title="退出复习">✕ 退出</button>
+    </div>
+
+    <!-- Card Area -->
+    <div class="review-card-area" id="review-card-area">
+      <div class="review-card" id="review-card">
+        <div class="review-card-source" id="review-card-source"></div>
+        <div class="review-card-text" id="review-card-text"></div>
+        <button class="review-reveal-note-btn hidden" id="review-reveal-note-btn">💬 查看备注</button>
+        <div class="review-card-note hidden" id="review-card-note"></div>
+      </div>
+    </div>
+
+    <!-- Jump to original -->
+    <div class="review-jump-wrap">
+      <button class="review-jump-btn" id="review-jump-btn">↗ 跳转原文</button>
+    </div>
+
+    <!-- Score Buttons -->
+    <div class="review-score-btns">
+      <button class="review-score-btn forgot" id="score-forgot">没记住</button>
+      <button class="review-score-btn fuzzy" id="score-fuzzy">模糊</button>
+      <button class="review-score-btn remembered" id="score-remembered">记住了 ✓</button>
+    </div>
+
+    <!-- Session Summary (shown after all cards done) -->
+    <div class="review-summary hidden" id="review-summary">
+      <div class="review-summary-icon">🎉</div>
+      <h2 class="review-summary-title">今日复习完成！</h2>
+      <div class="review-summary-stats" id="review-summary-stats"></div>
+      <button class="review-summary-close-btn" id="review-summary-close-btn">回到收藏列表</button>
+    </div>
+  </div>
+
+  <!-- Custom Confirm Dialog -->
+  <dialog class="custom-confirm-dialog" id="custom-confirm-dialog" aria-label="确认操作">
+    <div class="confirm-icon-wrap">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+        <line x1="12" y1="9" x2="12" y2="13"></line>
+        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+      </svg>
+    </div>
+    <h3 class="confirm-title" id="confirm-title">确认操作</h3>
+    <p class="confirm-message" id="confirm-message">确定要执行此操作吗？</p>
+    <div class="confirm-actions">
+      <button class="btn-primary danger" id="confirm-ok">确认</button>
+      <button class="btn-secondary" id="confirm-cancel">取消</button>
     </div>
   </dialog>
 

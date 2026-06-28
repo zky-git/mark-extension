@@ -149,43 +149,92 @@ body {
 /* ─── Settings Panel ─────────────────────────────────────────────────────────── */
 
 .settings-panel {
-  background: var(--bg-card);
-  border-bottom: 1px solid var(--border);
-  padding: 12px 16px;
-  flex-shrink: 0;
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 95;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
-
-  /* @starting-style + allow-discrete: smooth open AND close, no JS timers needed */
-  opacity: 1;
-  max-height: 200px;
-  transition:
-    opacity 0.2s ease,
-    max-height 0.25s ease,
-    display 0.2s allow-discrete,
-    padding 0.2s ease;
+  transform: translateX(0);
+  visibility: visible;
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0.22s;
 }
 
-/* Entry: animate FROM these values when .hidden is removed */
-@starting-style {
-  .settings-panel {
-    opacity: 0;
-    max-height: 0;
-  }
-}
-
-/* Exit state — transition TO these values */
 .settings-panel.hidden {
-  display: none;
-  opacity: 0;
-  max-height: 0;
-  padding-top: 0;
-  padding-bottom: 0;
+  transform: translateX(100%);
+  visibility: hidden;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .settings-panel {
-    transition-duration: 0.01ms;
-  }
+.settings-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-card);
+  flex-shrink: 0;
+}
+
+.settings-panel-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.settings-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.settings-body::-webkit-scrollbar {
+  width: 5px;
+}
+.settings-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.settings-body::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--text-secondary);
+  transition: background var(--transition), color var(--transition);
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.back-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.settings-body .settings-section {
+  margin-bottom: 0;
+}
+
+.settings-body .settings-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0;
 }
 
 .settings-section {
@@ -497,11 +546,41 @@ body {
 .stats-bar {
   padding: 2px 14px 6px;
   flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 #stats-text {
   font-size: 11px;
   color: var(--text-muted);
+}
+
+.sort-selector-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sort-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.sort-select {
+  font-size: 11px;
+  color: var(--text-main);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-medium);
+  border-radius: 4px;
+  padding: 1px 4px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.sort-select:focus {
+  border-color: var(--primary-color);
 }
 
 /* ─── Bookmark List ──────────────────────────────────────────────────────────── */
@@ -753,6 +832,9 @@ body {
 }
 
 .card-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   background: var(--accent-subtle);
   color: var(--accent);
   border-radius: 12px;
@@ -765,6 +847,31 @@ body {
 
 .card-tag:hover {
   background: var(--accent-subtle-hover);
+}
+
+.card-tag-name {
+  display: inline-block;
+}
+
+.card-tag-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  font-size: 9px;
+  line-height: 1;
+  color: var(--accent);
+  opacity: 0.6;
+  transition: opacity var(--transition), background var(--transition), color var(--transition);
+  margin-left: 1px;
+}
+
+.card-tag-delete:hover {
+  opacity: 1;
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--danger);
 }
 
 .card-tag-add {
@@ -1238,3 +1345,215 @@ body {
   gap: 8px;
   justify-content: flex-end;
 }
+
+/* ─── Custom Confirm Dialog ─────────────────────────────────────────────────── */
+
+.custom-confirm-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.custom-confirm-dialog {
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: 18px 16px 16px;
+  width: 100%;
+  max-width: 250px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-md), 0 0 0 1px var(--border-strong);
+  margin: auto;
+
+  /* @starting-style entry animation */
+  opacity: 1;
+  scale: 1;
+  transition:
+    opacity 0.2s ease,
+    scale 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+    display 0.2s allow-discrete,
+    overlay 0.2s allow-discrete;
+}
+
+@starting-style {
+  .custom-confirm-dialog[open] {
+    opacity: 0;
+    scale: 0.88;
+  }
+}
+
+.confirm-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--danger);
+  border-radius: 50%;
+  margin: 0 auto 12px;
+}
+
+.confirm-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  text-align: center;
+}
+
+.confirm-message {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin-bottom: 18px;
+  text-align: center;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: stretch;
+}
+
+.confirm-actions button {
+  flex: 1;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 7px 14px;
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--transition), color var(--transition), transform var(--transition);
+}
+
+.confirm-actions button:active {
+  transform: scale(0.97);
+}
+
+.confirm-actions .btn-primary.danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.confirm-actions .btn-primary.danger:hover {
+  background: #dc2626;
+}
+
+.confirm-actions .btn-secondary {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+}
+
+.confirm-actions .btn-secondary:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* ─── Info Icon & Tooltip ───────────────────────────────────────────────────── */
+
+.info-tooltip-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 5px;
+  cursor: help;
+  vertical-align: middle;
+}
+
+.info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: color var(--transition);
+}
+
+.info-tooltip-wrap:hover .info-icon {
+  color: var(--accent);
+}
+
+.info-tooltip-content {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  transform: translateY(4px);
+  width: 230px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  text-transform: none;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+  z-index: 100;
+}
+
+.info-tooltip-wrap:hover .info-tooltip-content {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.tooltip-title {
+  color: var(--text-primary);
+  font-size: 11.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  letter-spacing: 0.01em;
+}
+
+.tooltip-emoji {
+  margin-right: 6px;
+  display: inline-block;
+  font-size: 13px;
+}
+
+.tooltip-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tooltip-list li {
+  position: relative;
+  padding-left: 10px;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.tooltip-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 5px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: var(--accent);
+}
+
+/* Tooltip Arrow - uses background card color to match perfectly */
+.info-tooltip-content::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 14px;
+  border-width: 6px;
+  border-style: solid;
+  border-color: var(--bg-card) transparent transparent transparent;
+}
+

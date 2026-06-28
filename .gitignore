@@ -7,3 +7,7 @@ Thumbs.db
 
 # Node dependencies (if any are added later)
 node_modules/
+
+# Zip build packages
+*.zip
+

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MarkBuddy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="panel.css" />
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo">
+        <span class="logo-icon">🔖</span>
+        <span class="logo-text">MarkBuddy</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="settings-toggle-btn" title="设置" aria-label="打开设置">
+        ⚙️
+      </button>
+    </div>
+  </header>
+
+  <!-- Settings Panel (hidden by default) -->
+  <div class="settings-panel hidden" id="settings-panel" role="region" aria-label="设置面板">
+    <div class="settings-section">
+      <label class="settings-label">默认高亮颜色</label>
+      <div class="color-grid" id="color-grid"></div>
+    </div>
+    <div class="settings-section">
+      <label class="settings-label">添加自定义颜色</label>
+      <div class="custom-color-row">
+        <input type="color" id="custom-color-input" value="#FFD700" aria-label="自定义颜色" />
+        <button class="btn-secondary" id="add-color-btn">添加</button>
+      </div>
+    </div>
+    <div class="settings-divider"></div>
+    <div class="settings-section settings-row">
+      <div class="settings-row-info">
+        <span class="settings-row-label">按域名分组</span>
+        <span class="settings-row-desc">将收藏按网站域名归类显示</span>
+      </div>
+      <label class="switch" id="group-by-domain-switch" aria-label="按域名分组">
+        <input type="checkbox" id="group-by-domain-checkbox" checked />
+        <span class="switch-track">
+          <span class="switch-thumb"></span>
+        </span>
+      </label>
+    </div>
+  </div>
+
+  <!-- Search + Filter -->
+  <div class="search-bar-wrap">
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input
+        type="search"
+        id="search-input"
+        class="search-input"
+        placeholder="搜索网页标题或划线内容…"
+        aria-label="搜索收藏"
+        autocomplete="off"
+      />
+      <button class="search-clear hidden" id="search-clear" aria-label="清除搜索">✕</button>
+    </div>
+  </div>
+
+  <!-- Tags Filter -->
+  <div class="tags-bar" id="tags-bar" role="navigation" aria-label="标签过滤">
+    <button class="tag-chip active" data-tag="__all__" id="tag-all">全部</button>
+  </div>
+
+  <!-- Stats bar -->
+  <div class="stats-bar" id="stats-bar">
+    <span id="stats-text">加载中…</span>
+  </div>
+
+  <!-- Bookmark List -->
+  <main class="bookmark-list" id="bookmark-list" role="main" aria-label="收藏列表">
+    <div class="empty-state hidden" id="empty-state">
+      <div class="empty-icon">📚</div>
+      <p class="empty-title">还没有收藏</p>
+      <p class="empty-desc">在任意网页上选中文字，点击「高亮划线」开始吧！</p>
+    </div>
+    <div class="empty-state hidden" id="no-results-state">
+      <div class="empty-icon">🔍</div>
+      <p class="empty-title">没有找到匹配内容</p>
+      <p class="empty-desc">试试其他关键词或清除过滤条件</p>
+    </div>
+  </main>
+
+  <!-- Tag Dialog (native <dialog> for focus trap + Escape key) -->
+  <dialog class="tag-dialog" id="tag-dialog" aria-label="添加标签">
+    <div class="modal-header">
+      <span class="modal-title">添加标签</span>
+      <button class="icon-btn" id="modal-close">✕</button>
+    </div>
+    <input type="text" class="modal-input" id="tag-input" placeholder="输入标签名称…" maxlength="20" />
+    <div class="modal-tags-existing" id="existing-tags-list"></div>
+    <div class="modal-actions">
+      <button class="btn-primary" id="modal-confirm">确认</button>
+      <button class="btn-secondary" id="modal-cancel">取消</button>
+    </div>
+  </dialog>
+
+  <script src="panel.js"></script>
+</body>
+</html>

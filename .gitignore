@@ -1,0 +1,9 @@
+# Chrome extension profile directory
+chrome-profile/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Node dependencies (if any are added later)
+node_modules/

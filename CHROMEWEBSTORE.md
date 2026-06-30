@@ -1,6 +1,6 @@
 # Chrome Web Store Listing — MarkBuddy
 
-> Last Updated: 2026-06-28
+> Last Updated: 2026-06-30
 
 ## Store Listing
 
@@ -8,25 +8,31 @@
 MarkBuddy
 
 **Short Description** [REQUIRED]
-Save bookmarks and highlight text on any webpage. Highlights are automatically restored on every visit.
+Highlight useful web passages, find them later, review key excerpts, and export your data.
 
 **Detailed Description** [REQUIRED]
-MarkBuddy is a personal reading assistant that helps you save bookmarks and highlight text on any webpage. Highlights are automatically restored on every visit.
+MarkBuddy is a browser reading companion for people who learn and research on the web. It helps you highlight useful passages, find the original source later, review selected excerpts, and keep your data portable.
 
 FEATURES
-• Text Highlighting — Highlight text on any page using the context menu (right-click) or keyboard shortcut.
+• Text Highlighting — Highlight text on any page using the floating toolbar, context menu, or keyboard shortcut.
+• Find-Back Library — Search page titles, URLs, highlight text, and notes from the side panel.
 • Highlight Color Customization — Choose from a palette of highlighting colors.
-• Side Panel Organizer — View all your saved bookmarks and highlights in a neat side panel.
-• Auto-Restore — Highlights are automatically re-applied to the webpage when you visit it again.
+• Side Panel Organizer — View saved pages, highlights, tags, notes, and review status in a side panel.
+• Auto-Restore — Highlights are automatically re-applied when you visit the webpage again.
+• Light Recovery — If page text shifts slightly, MarkBuddy can recover highlights from the saved text snapshot.
+• Optional Review — Add only important highlights to a spaced-review queue.
+• Markdown Export — Export all, filtered, or single-page highlights to Markdown for note apps.
+• JSON Backup — Back up and restore local MarkBuddy data.
+• Keyboard Shortcuts — Open the side panel or save the current selection quickly.
 • Domain Grouping — Group saved highlights and bookmarks by website domains for easier navigation.
 
 HOW TO USE
-1. Click the extension icon to open the MarkBuddy side panel.
-2. Select any text on a webpage, right-click, and choose "Highlight" to highlight it.
-3. Use the side panel to see, filter, and jump back to your saved bookmarks and highlights.
+1. Click the extension icon or press Alt+Shift+M to open the MarkBuddy side panel.
+2. Select text on a webpage, then use the floating toolbar, right-click menu, or Alt+Shift+H to save a highlight.
+3. Use the side panel to search, filter, add notes, jump back to the source, review selected highlights, or export your data.
 
 PRIVACY
-All your data (bookmarks, highlights, colors, settings) is stored locally on your device using Chrome's extension storage API. We do not collect, transmit, or share any of your personal data or browsing history with third parties or external servers.
+All your data (bookmarks, highlights, notes, colors, review state, and settings) is stored locally on your device using Chrome's extension storage API. We do not collect, transmit, or share your personal data or browsing history with third parties or external servers.
 
 PERMISSIONS
 • "sidePanel" — Needed to display the side panel where you organize highlights.
@@ -35,7 +41,8 @@ PERMISSIONS
 • "contextMenus" — Needed to add the "Highlight" option to your right-click context menu.
 • "scripting" — Needed to apply highlights to the text on webpages.
 • "activeTab" — Needed to temporarily access the current tab when you perform a highlight action.
-• "<all_urls>" — Needed to restore your saved highlights on any website you visit.
+• "webNavigation" — Needed to detect single-page app route changes and restore highlights after navigation.
+• Content script access on webpages — Needed to restore your saved highlights on websites you visit.
 
 SUPPORT
 If you have any questions or feedback, please contact us at support@example.com or open an issue on our project repository.
@@ -44,7 +51,7 @@ If you have any questions or feedback, please contact us at support@example.com 
 Productivity
 
 **Single Purpose** [REQUIRED]
-Saves bookmarks and highlights text on web pages, automatically restoring highlights on future visits.
+Saves highlighted web passages locally so users can find, revisit, review, and export useful webpage excerpts.
 
 **Primary Language** [REQUIRED]
 Chinese (Simplified) / English
@@ -56,11 +63,13 @@ Chinese (Simplified) / English
 | Store Icon [REQUIRED] | 128×128 PNG | ✅ Ready | icons/icon-128.png |
 | Screenshot 1 [REQUIRED] | 1280×800 or 640×400 | ⬜ Not created | |
 | Screenshot 2 [RECOMMENDED] | 1280×800 or 640×400 | ⬜ Not created | |
+| Screenshot 3 [RECOMMENDED] | 1280×800 or 640×400 | ⬜ Not created | |
 | Small Promo Tile [RECOMMENDED] | 440×280 | ⬜ Not created | |
 
 ### Screenshot Notes
-- **Screenshot 1**: Side panel open on a highlighted news article, demonstrating the highlight list and categories.
-- **Screenshot 2**: Right-click context menu showing the highlight options and color settings panel.
+- **Screenshot 1**: Side panel open on a highlighted article, demonstrating search, tags, notes, and source jump.
+- **Screenshot 2**: Review mode showing an opt-in highlight review card.
+- **Screenshot 3**: Export/backup controls showing Markdown export and JSON backup.
 
 ## Permissions Justification
 
@@ -72,7 +81,9 @@ Chinese (Simplified) / English
 | `contextMenus` | permissions | Adds right-click options to highlight the currently selected text. |
 | `scripting` | permissions | Injects styles and highlighting scripts into pages dynamically. |
 | `activeTab` | permissions | Obtains temporary host access on user action to perform page manipulations. |
-| `<all_urls>` | host_permissions | Restores highlights automatically on any webpage when the user returns. |
+| `webNavigation` | permissions | Detects same-tab SPA route changes so highlights can be restored after navigation. |
+| `<all_urls>` | content_scripts.matches | Runs the content script on webpages so saved highlights can be restored when the user returns. |
+| `commands` | manifest key | Defines keyboard shortcuts. This is not a permissions entry. |
 
 ## Privacy & Data Use
 
@@ -113,7 +124,9 @@ Chinese (Simplified) / English
 
 | Version | Date | Changes | Status |
 |---------|------|---------|--------|
-| 1.0.0 | 2026-06-28 | Initial Release of MarkBuddy. | Draft |
+| 1.2.0 | 2026-06-30 | Aligns the product around find-back reading workflows, adds Markdown export, JSON backup/restore, highlight review opt-in controls, light highlight recovery, and keyboard shortcuts. | Draft |
+| 1.1.0 | 2026-06-29 | Adds SM-2 review mode, SPA highlight restoration, sorting, slide-over settings, and custom confirmation dialogs. | Draft |
+| 1.0.0 | 2026-06-28 | Initial Release of MarkBuddy. | Superseded draft |
 
 ## Review Notes
 

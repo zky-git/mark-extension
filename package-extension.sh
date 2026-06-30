@@ -18,6 +18,9 @@ zip -r "$OUTPUT" . \
   -x "*.zip" \
   -x "chrome-profile/*" \
   -x "docs/*" \
+  -x "docs/superpowers/*" \
+  -x "tests/*" \
+  -x "agent.md" \
   -x "CHROMEWEBSTORE.md" \
   -x "package-extension.sh" \
   -x ".DS_Store" \

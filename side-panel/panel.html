@@ -20,6 +20,13 @@
       </div>
     </div>
     <div class="header-actions">
+      <button class="icon-btn" id="export-toggle-btn" title="导出 Markdown" aria-label="导出 Markdown">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+      </button>
       <button class="icon-btn" id="settings-toggle-btn" title="设置" aria-label="打开设置">
         ⚙️
       </button>
@@ -91,6 +98,17 @@
           <span class="review-tag-hash">#</span>
           <input type="text" id="review-tag-input" class="review-tag-field" value="学习" maxlength="12" />
         </div>
+      </div>
+      <div class="settings-divider"></div>
+      <div class="settings-section">
+        <label class="settings-label">数据备份</label>
+        <div class="backup-actions">
+          <button class="btn-secondary backup-btn" id="backup-export-btn">导出 JSON 备份</button>
+          <button class="btn-secondary backup-btn" id="backup-import-btn">导入 JSON 备份</button>
+          <input type="file" id="backup-file-input" accept="application/json,.json" class="hidden" />
+        </div>
+        <p class="settings-help">完整备份用于恢复扩展数据；Markdown 导出用于带到笔记软件。</p>
+        <p class="backup-status" id="backup-status"></p>
       </div>
     </div>
   </div>
@@ -166,6 +184,25 @@
     </div>
   </dialog>
 
+  <!-- Export Dialog -->
+  <dialog class="export-dialog" id="export-dialog" aria-label="导出 Markdown">
+    <div class="modal-header">
+      <span class="modal-title">导出 Markdown</span>
+      <button class="icon-btn" id="export-close-btn" aria-label="关闭导出">✕</button>
+    </div>
+    <div class="export-body">
+      <button class="export-scope-btn" id="export-filtered-btn">
+        <span class="export-scope-title">导出当前结果</span>
+        <span class="export-scope-desc" id="export-filtered-desc">导出当前搜索和标签过滤后的网页</span>
+      </button>
+      <button class="export-scope-btn" id="export-all-btn">
+        <span class="export-scope-title">导出全部收藏</span>
+        <span class="export-scope-desc" id="export-all-desc">导出所有网页、高亮、标签和备注</span>
+      </button>
+      <p class="export-status" id="export-status"></p>
+    </div>
+  </dialog>
+
   <!-- Fullscreen Review Mode (hidden by default) -->
   <div class="review-mode hidden" id="review-mode" role="main" aria-label="复习模式">
     <!-- Review Progress -->
@@ -225,6 +262,9 @@
     </div>
   </dialog>
 
+  <script src="export-markdown.js"></script>
+  <script src="review-tags.js"></script>
+  <script src="backup-data.js"></script>
   <script src="panel.js"></script>
 </body>
 </html>

@@ -41,6 +41,32 @@ async function closeSidePanel(windowId) {
   }
 }
 
+async function toggleSidePanelForTab(tab) {
+  const windowId = tab?.windowId;
+  if (!windowId) return { success: false, error: 'No window ID found' };
+
+  if (openSidePanels.has(windowId)) {
+    await closeSidePanel(windowId);
+    return { success: true, state: 'closed' };
+  }
+
+  if (!tab?.id) return { success: false, error: 'No tab ID found' };
+  await chrome.sidePanel.open({ tabId: tab.id });
+  return { success: true, state: 'opened' };
+}
+
+async function runContentCommand(tab, func, label) {
+  if (!tab?.id) return;
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func,
+    });
+  } catch (err) {
+    console.error(`[MarkBuddy SW] ${label} command failed:`, err);
+  }
+}
+
 // ─── Initialization ──────────────────────────────────────────────────────────
 
 chrome.runtime.onInstalled.addListener(async () => {
@@ -66,22 +92,25 @@ chrome.runtime.onInstalled.addListener(async () => {
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (!tab?.id) return;
 
-  try {
-    if (info.menuItemId === 'markbuddy-save-page') {
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: () => window.__markbuddy_savePage?.(),
-      });
-    }
+  if (info.menuItemId === 'markbuddy-save-page') {
+    await runContentCommand(tab, () => window.__markbuddy_savePage?.(), 'Context menu save page');
+  }
 
-    if (info.menuItemId === 'markbuddy-save-highlight') {
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: () => window.__markbuddy_saveHighlight?.(),
-      });
-    }
-  } catch (err) {
-    console.error('[MarkBuddy SW] Context menu scripting failed:', err);
+  if (info.menuItemId === 'markbuddy-save-highlight') {
+    await runContentCommand(tab, () => window.__markbuddy_saveHighlight?.(), 'Context menu save highlight');
+  }
+});
+
+// ─── Keyboard Commands ───────────────────────────────────────────────────────
+
+chrome.commands.onCommand.addListener(async (command, tab) => {
+  if (command === 'toggle-side-panel') {
+    await toggleSidePanelForTab(tab);
+    return;
+  }
+
+  if (command === 'save-selection-highlight') {
+    await runContentCommand(tab, () => window.__markbuddy_saveHighlight?.(), 'Keyboard save highlight');
   }
 });
 
@@ -105,6 +134,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           break;
         case 'UPDATE_HIGHLIGHT_NOTE':
           sendResponse(await updateHighlightNote(message.payload.id, message.payload.note));
+          break;
+        case 'UPDATE_HIGHLIGHT_RANGE':
+          sendResponse(await updateHighlightRange(message.payload.id, message.payload.serializedRange));
           break;
         case 'GET_ALL_BOOKMARKS':
           sendResponse(await getAllBookmarks());
@@ -137,22 +169,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           sendResponse(await updateHighlightTags(message.payload.id, message.payload.tags));
           break;
         case 'TOGGLE_SIDE_PANEL':
-          const windowId = sender.tab?.windowId;
-          if (!windowId) {
-            sendResponse({ success: false, error: 'No window ID found' });
-            break;
-          }
-          if (openSidePanels.has(windowId)) {
-            await closeSidePanel(windowId);
-            sendResponse({ success: true, state: 'closed' });
-          } else {
-            if (sender.tab?.id) {
-              await chrome.sidePanel.open({ tabId: sender.tab.id });
-              sendResponse({ success: true, state: 'opened' });
-            } else {
-              sendResponse({ success: false, error: 'No tab ID found' });
-            }
-          }
+          sendResponse(await toggleSidePanelForTab(sender.tab));
           break;
         default:
           sendResponse({ error: 'Unknown message type' });
@@ -343,6 +360,17 @@ async function updateHighlightNote(id, note) {
   return { success: false, error: 'Highlight not found' };
 }
 
+async function updateHighlightRange(id, serializedRange) {
+  const highlights = (await getStorage('highlights')) || {};
+  if (highlights[id]) {
+    highlights[id].serializedRange = serializedRange;
+    highlights[id].active = true;
+    await setStorage('highlights', highlights);
+    return { success: true, highlight: highlights[id] };
+  }
+  return { success: false, error: 'Highlight not found' };
+}
+
 async function getSettings() {
   return (await getStorage('settings')) || {
     defaultColor: '#FFD700',
@@ -391,7 +419,7 @@ async function getDueReviews() {
   const now = Date.now();
 
   const due = Object.values(highlights).filter(h => {
-    if (!h.active) return false;
+    if (h.active === false) return false;
     const tags = h.tags || [];
     if (!tags.includes(reviewTag)) return false;
     if (!h.sm2) return true; // never reviewed — due immediately

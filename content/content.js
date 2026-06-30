@@ -130,6 +130,31 @@
     return null;
   }
 
+  function getAncestorText(ancestor) {
+    let text = '';
+    const walker = document.createTreeWalker(ancestor, NodeFilter.SHOW_TEXT, null);
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (isDeleteBtnNode(node)) continue;
+      text += node.textContent;
+    }
+    return text;
+  }
+
+  function getRangeText(range) {
+    return range ? range.toString().replace(/\s+/g, ' ').trim() : '';
+  }
+
+  function buildRangeFromOffsets(ancestor, startOffset, endOffset) {
+    const start = getNodeAtTextOffset(ancestor, startOffset);
+    const end = getNodeAtTextOffset(ancestor, endOffset);
+    if (!start || !end) return null;
+    const range = document.createRange();
+    range.setStart(start.node, start.offset);
+    range.setEnd(end.node, end.offset);
+    return range;
+  }
+
   function serializeRange(range) {
     try {
       const ancestor = getClosestStableAncestor(range.startContainer);
@@ -174,6 +199,44 @@
     } catch (e) {
       return null;
     }
+  }
+
+  function recoverSerializedRange(serialized) {
+    const healer = window.MarkBuddyTextRangeHealer;
+    if (!healer || !serialized?.parentXPath || !serialized?.text) return null;
+
+    const ancestor = resolveXPath(serialized.parentXPath);
+    if (!ancestor) return null;
+
+    const recovered = healer.findRecoveredOffsets(getAncestorText(ancestor), serialized);
+    if (!recovered) return null;
+
+    const range = buildRangeFromOffsets(ancestor, recovered.startOffset, recovered.endOffset);
+    if (!range || range.collapsed) return null;
+
+    return {
+      range,
+      serializedRange: {
+        ...serialized,
+        startOffset: recovered.startOffset,
+        endOffset: recovered.endOffset,
+      },
+    };
+  }
+
+  function resolveRestorableRange(serialized) {
+    const range = deserializeRange(serialized);
+    const expected = window.MarkBuddyTextRangeHealer?.normalizeSearchText(serialized?.text);
+    if (range && !range.collapsed) {
+      const actual = getRangeText(range);
+      if (!expected || actual === expected) {
+        return { range, healed: false, serializedRange: serialized };
+      }
+    }
+
+    const recovered = recoverSerializedRange(serialized);
+    if (recovered) return { ...recovered, healed: true };
+    return null;
   }
 
   function resolveXPath(xpath) {
@@ -542,11 +605,15 @@
         highlights.slice(i, i + BATCH).forEach(h => {
           if (document.querySelector(`.markbuddy-highlight[data-id="${h.id}"]`)) return;
           try {
-            const range = deserializeRange(h.serializedRange);
-            if (range && !range.collapsed) {
-              const marks = applyHighlight(range, h.color, h.id, !!h.note);
+            const resolved = resolveRestorableRange(h.serializedRange);
+            if (resolved?.range && !resolved.range.collapsed) {
+              const marks = applyHighlight(resolved.range, h.color, h.id, !!h.note);
               // Re-attach delete listener with the real id
               if (marks.length > 0) {
+                if (resolved.healed) {
+                  h.serializedRange = resolved.serializedRange;
+                  sendMessage('UPDATE_HIGHLIGHT_RANGE', { id: h.id, serializedRange: resolved.serializedRange });
+                }
                 const btn = marks[0].querySelector('.markbuddy-delete-btn');
                 if (btn) {
                   btn.replaceWith(btn.cloneNode(true));

@@ -394,6 +394,147 @@
     }
   }
 
+  // ─── Markdown Export ─────────────────────────────────────────────────────────
+
+  function getExportFormatter() {
+    return window.MarkBuddyExport || null;
+  }
+
+  function getReviewTagHelper() {
+    return window.MarkBuddyReviewTags || null;
+  }
+
+  function getBackupHelper() {
+    return window.MarkBuddyBackup || null;
+  }
+
+  function getCurrentExportScopeBookmarks() {
+    return getFilteredBookmarks();
+  }
+
+  function getExportTitle(scope, bookmarks) {
+    if (scope === 'single') {
+      const bm = bookmarks[0];
+      return bm?.title || bm?.url || 'MarkBuddy Export';
+    }
+    if (scope === 'filtered') return 'MarkBuddy Filtered Export';
+    return 'MarkBuddy Export';
+  }
+
+  function downloadTextFile(text, filename, type) {
+    const blob = new Blob([text], { type });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function setExportStatus(message, tone = 'muted') {
+    const status = document.getElementById('export-status');
+    if (!status) return;
+    status.textContent = message || '';
+    status.dataset.tone = tone;
+  }
+
+  async function exportBookmarks(scope, bookmark = null) {
+    const formatter = getExportFormatter();
+    if (!formatter) {
+      setExportStatus('导出模块未加载，请刷新侧边栏后重试。', 'danger');
+      return;
+    }
+
+    const bookmarks = bookmark ? [bookmark] : (scope === 'filtered' ? getCurrentExportScopeBookmarks() : allBookmarks);
+    if (!bookmarks.length) {
+      setExportStatus('当前没有可导出的收藏。', 'danger');
+      return;
+    }
+
+    const exportedAt = Date.now();
+    const title = getExportTitle(bookmark ? 'single' : scope, bookmarks);
+    const markdown = formatter.formatBookmarksAsMarkdown(bookmarks, { title, exportedAt });
+    if (!markdown) {
+      setExportStatus('当前没有可导出的内容。', 'danger');
+      return;
+    }
+
+    const filename = formatter.buildExportFilename(title, exportedAt);
+    downloadTextFile(markdown, filename, 'text/markdown;charset=utf-8');
+    setExportStatus(`已准备下载：${filename}`, 'success');
+  }
+
+  function setBackupStatus(message, tone = 'muted') {
+    const status = document.getElementById('backup-status');
+    if (!status) return;
+    status.textContent = message || '';
+    status.dataset.tone = tone;
+  }
+
+  async function exportJsonBackup() {
+    const backup = getBackupHelper();
+    if (!backup) {
+      setBackupStatus('备份模块未加载，请刷新侧边栏后重试。', 'danger');
+      return;
+    }
+
+    const exportedAt = Date.now();
+    const snapshot = await chrome.storage.local.get(backup.BACKUP_KEYS);
+    const payload = backup.createBackupPayload(snapshot, { exportedAt });
+    const filename = backup.buildBackupFilename(exportedAt);
+    downloadTextFile(`${JSON.stringify(payload, null, 2)}\n`, filename, 'application/json;charset=utf-8');
+    setBackupStatus(`已准备下载：${filename}`, 'success');
+  }
+
+  function readFileAsText(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.addEventListener('load', () => resolve(String(reader.result || '')));
+      reader.addEventListener('error', () => reject(reader.error || new Error('读取文件失败。')));
+      reader.readAsText(file);
+    });
+  }
+
+  async function importJsonBackup(file) {
+    const backup = getBackupHelper();
+    if (!backup) {
+      setBackupStatus('备份模块未加载，请刷新侧边栏后重试。', 'danger');
+      return;
+    }
+
+    try {
+      const text = await readFileAsText(file);
+      const payload = backup.parseBackupPayload(text);
+      const count = Object.keys(payload.data.bookmarks || {}).length;
+      const ok = await showCustomConfirm(
+        `导入将覆盖当前 MarkBuddy 本地数据，并恢复 ${count} 个网页收藏。继续吗？`,
+        '确认导入备份'
+      );
+      if (!ok) {
+        setBackupStatus('已取消导入。');
+        return;
+      }
+
+      await chrome.storage.local.set(payload.data);
+      setBackupStatus('备份已导入，列表已刷新。', 'success');
+      await loadAll();
+    } catch (err) {
+      setBackupStatus(err.message || '导入失败，请检查备份文件。', 'danger');
+    }
+  }
+
+  function refreshExportDialogText() {
+    const filtered = getCurrentExportScopeBookmarks();
+    const filteredHighlights = filtered.reduce((acc, bm) => acc + (bm.highlights?.length || 0), 0);
+    const allHighlights = allBookmarks.reduce((acc, bm) => acc + (bm.highlights?.length || 0), 0);
+    const filteredDesc = document.getElementById('export-filtered-desc');
+    const allDesc = document.getElementById('export-all-desc');
+    if (filteredDesc) filteredDesc.textContent = `导出 ${filtered.length} 个网页、${filteredHighlights} 条划线`;
+    if (allDesc) allDesc.textContent = `导出 ${allBookmarks.length} 个网页、${allHighlights} 条划线`;
+  }
+
   // ─── Build Bookmark Card ──────────────────────────────────────────────────────
 
   function buildBookmarkCard(bm) {
@@ -530,6 +671,23 @@
     }
 
     footer.appendChild(expandBtn);
+
+    const exportBtn = document.createElement('button');
+    exportBtn.className = 'card-action-btn card-export-btn';
+    exportBtn.title = '导出该网页为 Markdown';
+    exportBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="7 10 12 15 17 10"></polyline>
+        <line x1="12" y1="15" x2="12" y2="3"></line>
+      </svg>
+    `;
+    exportBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await exportBookmarks('single', bm);
+    });
+    footer.appendChild(exportBtn);
+
     card.appendChild(footer);
 
     // Highlights list (collapsible)
@@ -612,6 +770,23 @@
       text.textContent = h.text || '';
     }
     item.appendChild(text);
+
+    const reviewHelper = getReviewTagHelper();
+    const reviewTag = reviewHelper ? reviewHelper.normalizeReviewTag(settings.reviewTag) : ((settings.reviewTag || '').trim() || '学习');
+    const inReview = reviewHelper?.hasReviewTag(h.tags, reviewTag);
+    const reviewBtn = document.createElement('button');
+    reviewBtn.className = 'highlight-review-btn' + (inReview ? ' active' : '');
+    reviewBtn.title = inReview ? `从 #${reviewTag} 复习队列移出` : `加入 #${reviewTag} 复习队列`;
+    reviewBtn.textContent = inReview ? '复习中' : '+ 复习';
+    reviewBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (!reviewHelper) return;
+      const nextTags = reviewHelper.toggleReviewTag(h.tags, settings.reviewTag);
+      h.tags = nextTags;
+      await sendMessage('UPDATE_HIGHLIGHT_TAGS', { id: h.id, tags: nextTags });
+      await loadAll();
+    });
+    item.appendChild(reviewBtn);
 
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'highlight-delete-btn';
@@ -892,6 +1067,46 @@
   document.getElementById('settings-back-btn').addEventListener('click', () => {
     const panel = document.getElementById('settings-panel');
     panel.classList.add('hidden');
+  });
+
+  // Markdown export
+  document.getElementById('export-toggle-btn').addEventListener('click', () => {
+    refreshExportDialogText();
+    setExportStatus('');
+    document.getElementById('export-dialog').showModal();
+  });
+
+  document.getElementById('export-close-btn').addEventListener('click', () => {
+    document.getElementById('export-dialog').close();
+  });
+
+  document.getElementById('export-dialog').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) {
+      document.getElementById('export-dialog').close();
+    }
+  });
+
+  document.getElementById('export-filtered-btn').addEventListener('click', () => {
+    exportBookmarks('filtered');
+  });
+
+  document.getElementById('export-all-btn').addEventListener('click', () => {
+    exportBookmarks('all');
+  });
+
+  // JSON backup / restore
+  document.getElementById('backup-export-btn').addEventListener('click', exportJsonBackup);
+
+  document.getElementById('backup-import-btn').addEventListener('click', () => {
+    const input = document.getElementById('backup-file-input');
+    input.value = '';
+    input.click();
+  });
+
+  document.getElementById('backup-file-input').addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await importJsonBackup(file);
   });
 
   // Add custom color

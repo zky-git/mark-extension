@@ -324,6 +324,40 @@ body {
   color: var(--text-muted);
 }
 
+.settings-help {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+  margin-top: 7px;
+}
+
+.backup-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.backup-btn {
+  min-height: 32px;
+  justify-content: center;
+}
+
+.backup-status {
+  min-height: 18px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+  margin-top: 6px;
+}
+
+.backup-status[data-tone="success"] {
+  color: var(--success);
+}
+
+.backup-status[data-tone="danger"] {
+  color: var(--danger);
+}
+
 /* ─── Switch Toggle ───────────────────────────────────────────────────────── */
 
 .switch {
@@ -960,6 +994,87 @@ body {
   transform: scale(1.08);
 }
 
+.card-export-btn {
+  color: var(--text-muted);
+}
+
+.card-export-btn:hover {
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+/* ─── Export Dialog ─────────────────────────────────────────────────────────── */
+
+.export-dialog {
+  width: min(340px, calc(100vw - 32px));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-md);
+  padding: 0;
+}
+
+.export-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(3px);
+}
+
+.export-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+}
+
+.export-scope-btn {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 11px 12px;
+  transition: border-color var(--transition), background var(--transition), transform 0.12s;
+}
+
+.export-scope-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+  transform: translateY(-1px);
+}
+
+.export-scope-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+
+.export-scope-desc {
+  display: block;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.export-status {
+  min-height: 18px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.export-status[data-tone="success"] {
+  color: var(--success);
+}
+
+.export-status[data-tone="danger"] {
+  color: var(--danger);
+}
+
 /* ─── Highlights List ─────────────────────────────────────────────────────────────── */
 
 .highlights-list {
@@ -1155,6 +1270,33 @@ body {
   background: transparent;
   color: inherit;
   font-style: italic;
+}
+
+.highlight-review-btn {
+  min-width: 48px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 3px 7px;
+  flex-shrink: 0;
+  line-height: 1.2;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+
+.highlight-review-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+.highlight-review-btn.active {
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--success);
 }
 
 .highlight-delete-btn {
@@ -1556,4 +1698,3 @@ body {
   border-style: solid;
   border-color: var(--bg-card) transparent transparent transparent;
 }
-

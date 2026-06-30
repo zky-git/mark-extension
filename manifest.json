@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MarkBuddy",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Save bookmarks and highlight text on any webpage. Highlights are automatically restored on every visit.",
   "permissions": [
     "sidePanel",
@@ -16,13 +16,27 @@
     "service_worker": "service-worker.js"
   },
   "action": {},
+  "commands": {
+    "toggle-side-panel": {
+      "suggested_key": {
+        "default": "Alt+Shift+M"
+      },
+      "description": "打开或关闭 MarkBuddy 侧边栏"
+    },
+    "save-selection-highlight": {
+      "suggested_key": {
+        "default": "Alt+Shift+H"
+      },
+      "description": "保存当前选中文本为 MarkBuddy 高亮"
+    }
+  },
   "side_panel": {
     "default_path": "side-panel/panel.html"
   },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content/content.js"],
+      "js": ["content/text-range-healer.js", "content/content.js"],
       "css": ["content/content.css"],
       "run_at": "document_idle"
     }

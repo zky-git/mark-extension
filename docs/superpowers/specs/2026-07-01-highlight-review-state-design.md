@@ -1,37 +1,37 @@
-# Highlight Review State Design
+# 划线独立复习状态设计
 
-## Context
+## 背景
 
-MarkBuddy currently treats review membership as a highlight tag. A highlight enters the review queue when its `tags` array contains the configured review tag, defaulting to `学习`. This makes review look like a normal classification tag and caused confusion in the side panel: users can read the review affordance as a default tag on list items.
+MarkBuddy 目前把“是否加入复习”建模为一种高亮标签。只要某条划线的 `tags` 数组包含配置里的复习标签，默认是 `学习`，它就会进入复习队列。这个模型让复习状态看起来像普通分类标签，也导致侧边栏里的复习入口容易被误解成列表条目默认带了一个“复习”标签。
 
-The product direction is now explicit:
+现在的产品方向已经明确：
 
-- Review is for remembering specific highlighted excerpts, not whole webpages.
-- Saving a highlight must not automatically add it to review.
-- A user must manually add an excerpt to review.
-- Review state should be independent from normal tags.
-- Existing legacy review tags should not be migrated or treated as review state.
+- 复习用于记住具体划线摘录，而不是复习整篇网页。
+- 保存划线时不应自动加入复习。
+- 用户必须手动把某条摘录加入复习。
+- 复习状态应独立于普通标签。
+- 旧的复习标签不迁移，也不再被识别为复习状态。
 
-## Goals
+## 目标
 
-- Keep review at highlight level.
-- Store review membership in a dedicated `review.enabled` field.
-- Store SM-2 scheduling state under `review.sm2`.
-- Preserve ordinary bookmark and tag behavior.
-- Remove the review-tag setting from the active review model.
-- Make the side panel UI communicate that `+` is an action, not a tag.
+- 保持复习对象为单条划线。
+- 使用独立的 `review.enabled` 字段保存复习开关。
+- 将 SM-2 排期状态保存到 `review.sm2`。
+- 保留现有网页收藏和普通标签行为。
+- 从实际复习模型中移除“复习标签”配置。
+- 让侧边栏里的 `+` 明确表现为“加入复习”的动作，而不是标签。
 
-## Non-Goals
+## 非目标
 
-- No webpage-level review queue.
-- No automatic review enrollment for new highlights.
-- No migration from legacy `tags: ['学习']` data.
-- No compatibility mode where old review tags keep contributing to the review queue.
-- No changes to the SM-2 scoring algorithm itself.
+- 不做网页级复习队列。
+- 不让新划线自动加入复习。
+- 不迁移旧的 `tags: ['学习']` 数据。
+- 不提供旧复习标签继续进入复习队列的兼容模式。
+- 不修改现有 SM-2 评分算法本身。
 
-## Data Model
+## 数据模型
 
-New highlights remain review-neutral by default:
+新划线默认保持非复习状态：
 
 ```js
 {
@@ -45,7 +45,7 @@ New highlights remain review-neutral by default:
 }
 ```
 
-When a user manually adds a highlight to review, the highlight gains:
+当用户手动把某条划线加入复习后，该高亮新增：
 
 ```js
 review: {
@@ -59,62 +59,62 @@ review: {
 }
 ```
 
-After a score is submitted, `review.sm2` is replaced with the result of the existing SM-2 calculation. Removing a highlight from review sets `review.enabled = false` and leaves any ordinary `tags` untouched.
+用户提交复习评分后，用现有 SM-2 计算结果替换 `review.sm2`。用户把划线移出复习时，设置 `review.enabled = false`，不删除普通标签，也不影响网页收藏。
 
-## Behavior
+## 行为
 
-The due-review query includes only active highlights with independent review state:
+待复习查询只包含启用了独立复习状态的有效划线：
 
 ```js
 highlight.active !== false &&
 highlight.review?.enabled === true
 ```
 
-A highlight is due when:
+一条划线在以下情况视为到期：
 
-- it is review-enabled and has no `review.sm2`, or
-- `review.sm2.nextReviewAt <= Date.now()`.
+- 已启用复习，但没有 `review.sm2`；
+- 或 `review.sm2.nextReviewAt <= Date.now()`。
 
-Legacy highlights that only have the old review tag are not due. This is intentional: the new model starts cleanly from explicit review state.
+只有旧复习标签的历史划线不会进入待复习队列。这是有意设计：新模型从明确的独立复习状态开始，不隐式继承标签语义。
 
-## UI
+## 界面
 
-In each highlight row:
+在每条划线行内：
 
-- Not in review: show a compact `+` button with accessible text such as "加入复习".
-- In review: show "复习中".
-- Clicking `+` enables `review.enabled`.
-- Clicking "复习中" disables `review.enabled`.
+- 未加入复习时，显示紧凑的 `+` 按钮，并提供“加入复习”这类无障碍文本。
+- 已加入复习时，显示“复习中”。
+- 点击 `+` 会启用 `review.enabled`。
+- 点击“复习中”会关闭 `review.enabled`。
 
-The settings panel should no longer expose "复习标签" as an active configuration. If explanatory text remains, it should describe manual excerpt review rather than a configurable tag.
+设置面板不应再暴露“复习标签”作为有效配置。如果保留说明文案，应描述“手动选择划线摘录进行复习”，而不是描述某个可配置标签。
 
-The review banner and review mode keep their current placement and interaction pattern. They read from the new due-review query.
+今日复习提示条和复习模式保留当前的位置和交互方式，但数据来源改为新的待复习查询。
 
-## Storage Messages
+## 存储消息
 
-The background script should replace tag-based review updates with review-specific operations, for example:
+后台脚本应使用复习专用操作替代基于标签的复习更新，例如：
 
-- `UPDATE_HIGHLIGHT_REVIEW` with `{ id, enabled }`
-- `GET_DUE_REVIEWS`
-- `UPDATE_REVIEW_RESULT`
+- `UPDATE_HIGHLIGHT_REVIEW`，参数为 `{ id, enabled }`；
+- `GET_DUE_REVIEWS`；
+- `UPDATE_REVIEW_RESULT`。
 
-`UPDATE_HIGHLIGHT_TAGS` remains only for ordinary tag editing if highlight tags are used elsewhere.
+`UPDATE_HIGHLIGHT_TAGS` 只保留给普通标签编辑使用。如果划线标签后续没有普通编辑入口，可以在实现阶段再评估是否清理。
 
-## Backup And Export
+## 备份与导出
 
-JSON backup should preserve the new `review` object because backups already include full highlight records. Markdown export does not need to expose review state unless a separate export feature is requested later.
+JSON 备份应保留新的 `review` 对象，因为备份本来就包含完整高亮记录。Markdown 导出暂时不需要展示复习状态，除非后续单独设计导出复习信息的功能。
 
-## Testing
+## 测试
 
-Focused tests should cover:
+需要覆盖以下重点：
 
-- new highlights are not review-enabled by default;
-- legacy `tags: ['学习']` highlights are not due;
-- enabling review makes an active highlight due immediately;
-- scoring a review updates `review.sm2`;
-- disabling review removes the highlight from the due queue;
-- side panel review controls use independent review state rather than tags.
+- 新划线默认不启用复习；
+- 只有旧 `tags: ['学习']` 的划线不会进入待复习队列；
+- 手动启用复习后，有效划线会立即进入待复习队列；
+- 提交复习评分后会更新 `review.sm2`；
+- 关闭复习后，该划线不再进入待复习队列；
+- 侧边栏复习按钮使用独立复习状态，而不是标签。
 
-## Open Decisions
+## 未决事项
 
-None. The chosen model is highlight-level, manual opt-in, independent review state, with no legacy tag migration.
+无。已确定采用“划线级别、手动加入、独立复习状态、不迁移旧标签”的模型。

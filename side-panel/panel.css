@@ -1,5 +1,5 @@
 /* MarkBuddy — Side Panel Styles
-   Follows system dark/light mode via prefers-color-scheme
+   Follows system dark/light mode via prefers-color-scheme unless overridden
    ───────────────────────────────────────────────────────── */
 
 /* Note: Google Fonts cannot load in extension pages due to CSP.
@@ -8,6 +8,7 @@
 /* ─── CSS Variables ──────────────────────────────────────────────────────────── */
 
 :root {
+  color-scheme: light;
   --bg: #f7f8fc;
   --bg-card: #ffffff;
   --bg-hover: #f0f1f9;
@@ -32,8 +33,28 @@
   --transition: 0.18s ease;
 }
 
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1117;
+  --bg-card: #1a1f2e;
+  --bg-hover: #222840;
+  --bg-surface: #161b2b;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.12);
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent: #7c74ff;
+  --accent-hover: #6c63ff;
+  --accent-subtle: rgba(124, 116, 255, 0.12);
+  --accent-subtle-hover: rgba(124, 116, 255, 0.22);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
+    color-scheme: dark;
     --bg: #0f1117;
     --bg-card: #1a1f2e;
     --bg-hover: #222840;
@@ -331,6 +352,25 @@ body {
   margin-top: 7px;
 }
 
+.settings-select {
+  min-width: 104px;
+  height: 30px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  padding: 0 8px;
+  cursor: pointer;
+}
+
+.settings-select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
 .backup-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -356,6 +396,23 @@ body {
 
 .backup-status[data-tone="danger"] {
   color: var(--danger);
+}
+
+.panel-notice {
+  margin: 0 0 10px;
+  padding: 9px 10px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--danger) 9%, var(--bg-card));
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.panel-notice[data-tone="success"] {
+  border-color: var(--success);
+  background: color-mix(in srgb, var(--success) 10%, var(--bg-card));
+  color: var(--success);
 }
 
 /* ─── Switch Toggle ───────────────────────────────────────────────────────── */
@@ -1099,10 +1156,12 @@ body {
 }
 
 .highlight-item {
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  padding: 8px 12px 4px 12px;
+  padding: 8px 12px 4px;
+  padding-right: 36px;
   transition: background var(--transition);
   cursor: pointer;
 }
@@ -1121,11 +1180,15 @@ body {
 .highlight-note-text {
   display: flex;
   align-items: flex-start;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
   color: var(--text-secondary);
   line-height: 1.4;
   word-break: break-all;
   white-space: pre-wrap;
   margin-bottom: 4px;
+  padding: 6px 8px;
 }
 
 .highlight-note-icon {
@@ -1273,7 +1336,7 @@ body {
 }
 
 .highlight-review-btn {
-  min-width: 48px;
+  min-width: 54px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: transparent;
@@ -1300,6 +1363,9 @@ body {
 }
 
 .highlight-delete-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
   background: transparent;
   border: none;
   border-radius: 6px;
@@ -1613,7 +1679,9 @@ body {
   transition: color var(--transition);
 }
 
-.info-tooltip-wrap:hover .info-icon {
+.info-tooltip-wrap:hover .info-icon,
+.info-tooltip-wrap:focus .info-icon,
+.info-tooltip-wrap:focus-within .info-icon {
   color: var(--accent);
 }
 
@@ -1636,7 +1704,9 @@ body {
   z-index: 100;
 }
 
-.info-tooltip-wrap:hover .info-tooltip-content {
+.info-tooltip-wrap:hover .info-tooltip-content,
+.info-tooltip-wrap:focus .info-tooltip-content,
+.info-tooltip-wrap:focus-within .info-tooltip-content {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);

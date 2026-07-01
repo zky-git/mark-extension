@@ -18,6 +18,8 @@
   let pageHighlights = []; // Local store of highlights on the current page
   let activePopover = null; // Store reference to open popover
   let activePopoverMark = null; // Mark element associated with open popover
+  const MAX_HIGHLIGHT_TEXT_LENGTH = 800;
+  const MAX_HIGHLIGHT_TEXT_NODES = 20;
 
   // ─── Messaging ────────────────────────────────────────────────────────────────
 
@@ -288,6 +290,24 @@
     return results;
   }
 
+  function getDeleteButtonHost(marks) {
+    if (!marks || marks.length === 0) return null;
+    return marks[marks.length - 1];
+  }
+
+  function getOversizedSelectionReason(range, serialized) {
+    const text = (serialized?.text || '').replace(/\s+/g, ' ').trim();
+    if (text.length > MAX_HIGHLIGHT_TEXT_LENGTH) {
+      return '选区过大，请重新选择需要划线的内容';
+    }
+
+    if (getTextNodesInRange(range).length > MAX_HIGHLIGHT_TEXT_NODES) {
+      return '选区跨越内容过多，请重新选择需要划线的内容';
+    }
+
+    return '';
+  }
+
   /**
    * Apply highlight by splitting text nodes and wrapping with <mark>.
    * Returns array of created mark elements (one per text node).
@@ -322,7 +342,7 @@
         setupHighlightListeners(mark);
       });
 
-      // Add a single delete button to the first mark
+      // Add a single delete button at the end of split highlights.
       if (marks.length > 0) {
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'markbuddy-delete-btn';
@@ -337,7 +357,7 @@
           e.stopPropagation();
           removeHighlight(highlightId, marks);
         });
-        marks[0].appendChild(deleteBtn);
+        getDeleteButtonHost(marks).appendChild(deleteBtn);
       }
 
       return marks;
@@ -614,10 +634,10 @@
                   h.serializedRange = resolved.serializedRange;
                   sendMessage('UPDATE_HIGHLIGHT_RANGE', { id: h.id, serializedRange: resolved.serializedRange });
                 }
-                const btn = marks[0].querySelector('.markbuddy-delete-btn');
+                const btn = getDeleteButtonHost(marks).querySelector('.markbuddy-delete-btn');
                 if (btn) {
                   btn.replaceWith(btn.cloneNode(true));
-                  const newBtn = marks[0].querySelector('.markbuddy-delete-btn');
+                  const newBtn = getDeleteButtonHost(marks).querySelector('.markbuddy-delete-btn');
                   newBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     removeHighlight(h.id, marks);
@@ -779,6 +799,15 @@
       return;
     }
 
+    const oversizedReason = getOversizedSelectionReason(rangeToUse, serialized);
+    if (oversizedReason) {
+      window.getSelection()?.removeAllRanges();
+      currentRange = null;
+      hideToolbar();
+      showToast(oversizedReason);
+      return;
+    }
+
     // Apply highlight visually (must clone again since serialize may move iterators)
     const highlightId = `hl_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const rangeForDom = rangeSource.cloneRange();
@@ -805,10 +834,10 @@
       if (realId && marks.length > 0) {
         marks.forEach(m => { m.dataset.id = realId; });
         // Re-attach delete button with real id
-        const btn = marks[0].querySelector('.markbuddy-delete-btn');
+        const btn = getDeleteButtonHost(marks).querySelector('.markbuddy-delete-btn');
         if (btn) {
           btn.replaceWith(btn.cloneNode(true));
-          const newBtn = marks[0].querySelector('.markbuddy-delete-btn');
+          const newBtn = getDeleteButtonHost(marks).querySelector('.markbuddy-delete-btn');
           newBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             removeHighlight(realId, marks);

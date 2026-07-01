@@ -11,6 +11,12 @@
 - 将重要高亮加入复习队列
 - 导出 Markdown，或用 JSON 备份/恢复本地数据
 
+## 复习模型
+
+复习功能以单条划线为对象。新划线默认不进入复习队列，用户需要在侧边面板中手动把重要摘录加入复习。复习状态保存到高亮对象的 `review.enabled`，SM-2 排期状态保存到 `review.sm2`，不再通过普通标签判断是否复习。
+
+SM-2 的 `interval` 按天计算：首次记住后约 1 天再复习，第二次约 6 天，后续按 ease factor 扩展。
+
 ## 快速开始
 
 ### 本地安装插件
@@ -28,6 +34,21 @@
 
 脚本会读取 `manifest.json` 中的版本号，生成 `markbuddy-v<version>.zip`。
 
+### 测试
+
+项目使用 Node.js 内置断言脚本做轻量验证：
+
+```bash
+node tests/service-worker-review.test.js
+node tests/panel-structure.test.js
+node tests/backup-data.test.js
+node tests/export-markdown.test.js
+node tests/content-highlight-dom.test.js
+node tests/text-range-healer.test.js
+node tests/manifest-commands.test.js
+node tests/package-script.test.js
+```
+
 ### 项目结构
 
 ```
@@ -42,12 +63,14 @@ mark-extension/
 │   ├── panel.js               # 面板逻辑：列表渲染、搜索、过滤
 │   ├── panel.css              # 面板样式（深/浅色自适应）
 │   ├── export-markdown.js     # Markdown 导出
-│   ├── backup-data.js         # JSON 备份/恢复
-│   └── review-tags.js         # 复习标签辅助
+│   └── backup-data.js         # JSON 备份/恢复
 ├── icons/
 │   ├── icon-16.png
 │   ├── icon-48.png
 │   └── icon-128.png
+├── tests/                      # Node.js 断言测试
+├── docs/
+│   └── superpowers/            # 设计说明和实施计划
 ├── CHROMEWEBSTORE.md          # Chrome Web Store 上架材料草稿
 └── package-extension.sh       # 生成商店提交 zip
 ```

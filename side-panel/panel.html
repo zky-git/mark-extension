@@ -59,6 +59,18 @@
       <div class="settings-divider"></div>
       <div class="settings-section settings-row">
         <div class="settings-row-info">
+          <label class="settings-row-label" for="theme-mode-select">主题显示</label>
+          <span class="settings-row-desc">选择侧边栏的明暗外观</span>
+        </div>
+        <select id="theme-mode-select" class="settings-select" aria-label="主题显示">
+          <option value="system">跟随系统</option>
+          <option value="light">浅色模式</option>
+          <option value="dark">深色模式</option>
+        </select>
+      </div>
+      <div class="settings-divider"></div>
+      <div class="settings-section settings-row">
+        <div class="settings-row-info">
           <span class="settings-row-label">按域名分组</span>
           <span class="settings-row-desc">将收藏按网站域名归类显示</span>
         </div>
@@ -73,8 +85,8 @@
       <div class="settings-section settings-row">
         <div class="settings-row-info">
           <span class="settings-row-label">
-            复习标签
-            <span class="info-tooltip-wrap">
+            划线复习
+            <span class="info-tooltip-wrap" tabindex="0" aria-label="查看 SM-2 复习策略说明">
               <span class="info-icon">
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
                   <circle cx="12" cy="12" r="10"></circle>
@@ -83,21 +95,23 @@
                 </svg>
               </span>
               <span class="info-tooltip-content">
-                <span class="tooltip-title"><span class="tooltip-emoji">🧠</span>艾宾浩斯复习策略 (SM-2)</span>
+                <span class="tooltip-title"><span class="tooltip-emoji">🧠</span>SM-2 复习策略</span>
                 <ul class="tooltip-list">
-                  <li>带有该标签的网页划线会自动安排每日复习</li>
-                  <li>每次复习通过三挡打分反馈您真实的记忆状态</li>
-                  <li>算法动态拉长复习周期，用最少回顾实现长期记忆</li>
+                  <li>复习对象是你手动加入队列的划线摘录</li>
+                  <li>每次复习用三档反馈：没记住、模糊、记住了</li>
+                  <li>系统会根据反馈动态调整下一次复习时间</li>
                 </ul>
               </span>
             </span>
           </span>
-          <span class="settings-row-desc">打上此标签的划线将加入复习队列</span>
+          <span class="settings-row-desc">开启后可将划线加入间隔复习；关闭后列表隐藏复习按钮</span>
         </div>
-        <div class="review-tag-wrap">
-          <span class="review-tag-hash">#</span>
-          <input type="text" id="review-tag-input" class="review-tag-field" value="学习" maxlength="12" />
-        </div>
+        <label class="switch" id="review-enabled-switch" aria-label="开启划线复习">
+          <input type="checkbox" id="review-enabled-checkbox" checked />
+          <span class="switch-track">
+            <span class="switch-thumb"></span>
+          </span>
+        </label>
       </div>
       <div class="settings-divider"></div>
       <div class="settings-section">
@@ -117,7 +131,7 @@
   <div class="review-banner hidden" id="review-banner">
     <span class="review-banner-icon">📖</span>
     <span class="review-banner-text" id="review-banner-text">今日待复习 0 条</span>
-    <button class="review-banner-btn" id="review-start-btn">开始</button>
+    <button class="review-banner-btn" id="review-start-btn">开始复习</button>
   </div>
 
   <!-- Search + Filter -->
@@ -125,7 +139,7 @@
     <div class="search-bar">
       <span class="search-icon">🔍</span>
       <input
-        type="search"
+        type="text"
         id="search-input"
         class="search-input"
         placeholder="搜索网页标题或划线内容…"
@@ -225,12 +239,12 @@
     </div>
 
     <!-- Jump to original -->
-    <div class="review-jump-wrap">
+    <div class="review-jump-wrap" id="review-jump-wrap">
       <button class="review-jump-btn" id="review-jump-btn">↗ 跳转原文</button>
     </div>
 
     <!-- Score Buttons -->
-    <div class="review-score-btns">
+    <div class="review-score-btns" id="review-score-btns">
       <button class="review-score-btn forgot" id="score-forgot">没记住</button>
       <button class="review-score-btn fuzzy" id="score-fuzzy">模糊</button>
       <button class="review-score-btn remembered" id="score-remembered">记住了 ✓</button>
@@ -263,7 +277,6 @@
   </dialog>
 
   <script src="export-markdown.js"></script>
-  <script src="review-tags.js"></script>
   <script src="backup-data.js"></script>
   <script src="panel.js"></script>
 </body>

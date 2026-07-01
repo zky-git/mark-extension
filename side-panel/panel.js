@@ -7,12 +7,14 @@
 
   let allBookmarks = [];
   let allTags = [];
-  let settings = { defaultColor: '#FFD700', presetColors: ['#FFD700', '#90EE90', '#87CEEB', '#FFB6C1', '#DDA0DD'] };
+  let settings = { defaultColor: '#FFD700', presetColors: ['#FFD700', '#90EE90', '#87CEEB', '#FFB6C1', '#DDA0DD'], themeMode: 'system', reviewEnabled: true };
   let activeTagFilters = new Set(); // empty = show all
   let searchQuery = '';
   let pendingTagUrl = null; // which bookmark the tag modal is targeting
   let groupByDomain = true; // default: group enabled
   let sortBy = 'time-desc'; // default: newest first
+  let panelNoticeTimer = null;
+  let expandedBookmarkUrls = new Set();
 
   // Review state
   let reviewQueue = [];       // Due highlights for today
@@ -46,6 +48,70 @@
     });
   }
 
+  function applyThemeMode(themeMode) {
+    const normalized = ['light', 'dark'].includes(themeMode) ? themeMode : 'system';
+    if (normalized === 'system') {
+      delete document.documentElement.dataset.theme;
+    } else {
+      document.documentElement.dataset.theme = normalized;
+    }
+  }
+
+  function isReviewFeatureEnabled() {
+    return settings.reviewEnabled !== false;
+  }
+
+  function hasReviewEnabledHighlights() {
+    return allBookmarks.some(bm => (bm.highlights || []).some(h => h.review?.enabled === true));
+  }
+
+  function showPanelNotice(message, tone = 'danger') {
+    const list = document.getElementById('bookmark-list');
+    const settingsPanel = document.getElementById('settings-panel');
+    const settingsBody = settingsPanel?.querySelector('.settings-body');
+    const target = settingsPanel && !settingsPanel.classList.contains('hidden') && settingsBody
+      ? settingsBody
+      : list;
+    if (!target) return;
+
+    let notice = document.getElementById('panel-notice');
+    if (!notice) {
+      notice = document.createElement('div');
+      notice.id = 'panel-notice';
+      notice.className = 'panel-notice';
+      notice.setAttribute('role', 'status');
+      notice.setAttribute('aria-live', 'polite');
+    }
+    target.prepend(notice);
+
+    notice.textContent = message;
+    notice.dataset.tone = tone;
+    notice.classList.remove('hidden');
+
+    clearTimeout(panelNoticeTimer);
+    panelNoticeTimer = setTimeout(() => {
+      notice.classList.add('hidden');
+    }, 3200);
+  }
+
+  async function openBookmarkUrl(url) {
+    try {
+      new URL(url);
+    } catch {
+      showPanelNotice('无法打开网页，请检查链接是否有效。');
+      return false;
+    }
+
+    try {
+      await chrome.tabs.create({ url });
+      return true;
+    } catch (err) {
+      console.warn('[MarkBuddy Panel] Failed to open bookmark URL:', err);
+      showPanelNotice('无法打开网页，请检查链接是否有效。');
+      return false;
+    }
+  }
+
   // ─── Data Loading ─────────────────────────────────────────────────────────────
 
   async function loadAll() {
@@ -62,7 +128,18 @@
 
     allBookmarks = bookmarksResp || [];
     allTags = tagsResp || [];
-    if (settingsResp) settings = settingsResp;
+    if (settingsResp) {
+      settings = {
+        ...settings,
+        ...settingsResp,
+        reviewEnabled: settingsResp.reviewEnabled !== false,
+      };
+    }
+    applyThemeMode(settings.themeMode);
+    const themeSelect = document.getElementById('theme-mode-select');
+    if (themeSelect) themeSelect.value = ['light', 'dark'].includes(settings.themeMode) ? settings.themeMode : 'system';
+    const reviewEnabledCheckbox = document.getElementById('review-enabled-checkbox');
+    if (reviewEnabledCheckbox) reviewEnabledCheckbox.checked = isReviewFeatureEnabled();
 
     // groupByDomain defaults to true if never saved
     groupByDomain = !groupResp || groupResp.groupByDomain !== false;
@@ -78,10 +155,6 @@
     renderColorGrid();
     renderList();
     updateStats();
-
-    // Restore review tag field from saved settings
-    const reviewTagInput = document.getElementById('review-tag-input');
-    if (reviewTagInput && settings.reviewTag) reviewTagInput.value = settings.reviewTag;
 
     // Refresh review banner count
     updateReviewBanner();
@@ -400,10 +473,6 @@
     return window.MarkBuddyExport || null;
   }
 
-  function getReviewTagHelper() {
-    return window.MarkBuddyReviewTags || null;
-  }
-
   function getBackupHelper() {
     return window.MarkBuddyBackup || null;
   }
@@ -564,6 +633,10 @@
     if (searchQuery) {
       title.innerHTML = highlightMatch(bm.title || bm.url, searchQuery);
     }
+    title.addEventListener('click', (e) => {
+      e.preventDefault();
+      openBookmarkUrl(bm.url);
+    });
     info.appendChild(title);
 
     const meta = document.createElement('div');
@@ -703,6 +776,11 @@
       expandBtn.addEventListener('click', () => {
         const isOpen = hlList.classList.toggle('open');
         expandBtn.classList.toggle('expanded', isOpen);
+        if (isOpen) {
+          expandedBookmarkUrls.add(bm.url);
+        } else {
+          expandedBookmarkUrls.delete(bm.url);
+        }
       });
 
       // Auto-expand if search matches a highlight or its note
@@ -715,6 +793,11 @@
           hlList.classList.add('open');
           expandBtn.classList.add('expanded');
         }
+      }
+
+      if (expandedBookmarkUrls.has(bm.url)) {
+        hlList.classList.add('open');
+        expandBtn.classList.add('expanded');
       }
     }
 
@@ -771,22 +854,20 @@
     }
     item.appendChild(text);
 
-    const reviewHelper = getReviewTagHelper();
-    const reviewTag = reviewHelper ? reviewHelper.normalizeReviewTag(settings.reviewTag) : ((settings.reviewTag || '').trim() || '学习');
-    const inReview = reviewHelper?.hasReviewTag(h.tags, reviewTag);
-    const reviewBtn = document.createElement('button');
-    reviewBtn.className = 'highlight-review-btn' + (inReview ? ' active' : '');
-    reviewBtn.title = inReview ? `从 #${reviewTag} 复习队列移出` : `加入 #${reviewTag} 复习队列`;
-    reviewBtn.textContent = inReview ? '复习中' : '+ 复习';
-    reviewBtn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      if (!reviewHelper) return;
-      const nextTags = reviewHelper.toggleReviewTag(h.tags, settings.reviewTag);
-      h.tags = nextTags;
-      await sendMessage('UPDATE_HIGHLIGHT_TAGS', { id: h.id, tags: nextTags });
-      await loadAll();
-    });
-    item.appendChild(reviewBtn);
+    if (isReviewFeatureEnabled()) {
+      const inReview = h.review?.enabled === true;
+      const reviewBtn = document.createElement('button');
+      reviewBtn.className = 'highlight-review-btn' + (inReview ? ' active' : '');
+      reviewBtn.title = inReview ? '移出复习队列' : '加入复习队列';
+      reviewBtn.setAttribute('aria-label', inReview ? '移出复习队列' : '加入复习队列');
+      reviewBtn.textContent = inReview ? '移出复习' : '加入复习';
+      reviewBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await sendMessage('UPDATE_HIGHLIGHT_REVIEW', { id: h.id, enabled: !inReview });
+        await loadAll();
+      });
+      item.appendChild(reviewBtn);
+    }
 
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'highlight-delete-btn';
@@ -803,8 +884,16 @@
     item.addEventListener('click', (e) => {
       if (e.target === deleteBtn) return;
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (chrome.runtime.lastError) {
+          console.warn('[MarkBuddy Panel] Could not query active tab:', chrome.runtime.lastError.message);
+          showPanelNotice('无法打开网页，请检查链接是否有效。');
+          return;
+        }
         const activeTab = tabs?.[0];
-        if (!activeTab) return;
+        if (!activeTab) {
+          showPanelNotice('无法打开网页，请检查链接是否有效。');
+          return;
+        }
         if (activeTab.url === pageUrl) {
           // Already on this page — scroll to highlight
           chrome.tabs.sendMessage(activeTab.id, { type: 'SCROLL_TO_HIGHLIGHT', highlightId: h.id }, (response) => {
@@ -813,7 +902,12 @@
             }
           });
         } else {
-          chrome.tabs.update(activeTab.id, { url: pageUrl });
+          chrome.tabs.update(activeTab.id, { url: pageUrl }, () => {
+            if (chrome.runtime.lastError) {
+              console.warn('[MarkBuddy Panel] Could not navigate active tab:', chrome.runtime.lastError.message);
+              openBookmarkUrl(pageUrl);
+            }
+          });
         }
       });
     });
@@ -1168,7 +1262,7 @@
 
   // Listen for storage changes (e.g. highlight added from content script)
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && (changes.bookmarks || changes.highlights || changes.tags)) {
+    if (area === 'local' && (changes.bookmarks || changes.highlights || changes.tags || changes.settings)) {
       loadAll();
     }
   });
@@ -1179,6 +1273,34 @@
     await chrome.storage.local.set({ groupByDomain }).catch(() => {});
     renderList();
   });
+
+  const themeModeSelect = document.getElementById('theme-mode-select');
+  if (themeModeSelect) {
+    themeModeSelect.addEventListener('change', async (e) => {
+      const themeMode = e.target.value;
+      settings.themeMode = themeMode;
+      applyThemeMode(themeMode);
+      await sendMessage('SAVE_SETTINGS', settings);
+    });
+  }
+
+  const reviewEnabledCheckbox = document.getElementById('review-enabled-checkbox');
+  if (reviewEnabledCheckbox) {
+    reviewEnabledCheckbox.addEventListener('change', async (e) => {
+      const enabled = e.target.checked;
+      if (!enabled && hasReviewEnabledHighlights()) {
+        e.target.checked = true;
+        settings.reviewEnabled = true;
+        showPanelNotice('已有划线处于复习中，请先移出复习队列后再关闭。');
+        return;
+      }
+
+      settings.reviewEnabled = enabled;
+      await sendMessage('SAVE_SETTINGS', settings);
+      renderList();
+      updateReviewBanner();
+    });
+  }
 
   // Sort selection dropdown change listener
   const sortSelect = document.getElementById('sort-select');
@@ -1193,10 +1315,14 @@
   // ─── Review Banner ────────────────────────────────────────────────────────────
 
   async function updateReviewBanner() {
-    const due = await sendMessage('GET_DUE_REVIEWS');
     const banner = document.getElementById('review-banner');
     const bannerText = document.getElementById('review-banner-text');
     if (!banner) return;
+    if (!isReviewFeatureEnabled()) {
+      banner.classList.add('hidden');
+      return;
+    }
+    const due = await sendMessage('GET_DUE_REVIEWS');
     if (due && due.length > 0) {
       bannerText.textContent = `今日待复习 ${due.length} 条`;
       banner.classList.remove('hidden');
@@ -1212,8 +1338,20 @@
   }
 
   async function startReviewMode() {
+    if (!isReviewFeatureEnabled()) {
+      showPanelNotice('划线复习已关闭。', 'success');
+      return;
+    }
     const due = await sendMessage('GET_DUE_REVIEWS');
-    if (!due || due.length === 0) return;
+    if (!due) {
+      showPanelNotice('无法开始复习，请稍后重试。');
+      return;
+    }
+    if (due.length === 0) {
+      showPanelNotice('暂无待复习内容。', 'success');
+      updateReviewBanner();
+      return;
+    }
 
     reviewQueue = due;
     reviewIndex = 0;
@@ -1332,35 +1470,26 @@
     const url = btn.dataset.url;
     const highlightId = btn.dataset.highlightId;
     if (!url) return;
-    // Open in new tab and scroll to highlight
-    const [tab] = await chrome.tabs.query({ url: url + '*', currentWindow: true }).catch(() => []);
-    if (tab) {
-      await chrome.tabs.update(tab.id, { active: true });
-      if (highlightId) {
-        setTimeout(() => {
-          chrome.tabs.sendMessage(tab.id, { type: 'SCROLL_TO_HIGHLIGHT', highlightId }, () => {
-            if (chrome.runtime.lastError) {}
-          });
-        }, 300);
+    try {
+      // Open in new tab and scroll to highlight
+      const [tab] = await chrome.tabs.query({ url: url + '*', currentWindow: true }).catch(() => []);
+      if (tab) {
+        await chrome.tabs.update(tab.id, { active: true });
+        if (highlightId) {
+          setTimeout(() => {
+            chrome.tabs.sendMessage(tab.id, { type: 'SCROLL_TO_HIGHLIGHT', highlightId }, () => {
+              if (chrome.runtime.lastError) {}
+            });
+          }, 300);
+        }
+      } else {
+        await openBookmarkUrl(url);
       }
-    } else {
-      chrome.tabs.create({ url });
+    } catch (err) {
+      console.warn('[MarkBuddy Panel] Review jump failed:', err);
+      showPanelNotice('无法打开网页，请检查链接是否有效。');
     }
   });
-
-  // Review tag input — save on blur/enter
-  const reviewTagInput = document.getElementById('review-tag-input');
-  if (reviewTagInput) {
-    const saveReviewTag = async () => {
-      const tag = reviewTagInput.value.trim();
-      if (!tag) { reviewTagInput.value = '学习'; return; }
-      settings.reviewTag = tag;
-      await sendMessage('SAVE_SETTINGS', settings);
-      updateReviewBanner();
-    };
-    reviewTagInput.addEventListener('blur', saveReviewTag);
-    reviewTagInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') reviewTagInput.blur(); });
-  }
 
   // ─── Init ─────────────────────────────────────────────────────────────────────
 

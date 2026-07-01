@@ -23,13 +23,15 @@ const storageSnapshot = {
       url: 'https://example.com',
       text: '完整备份应保留 range 和复习状态。',
       active: true,
-      tags: ['学习'],
       serializedRange: { parentXPath: '/html/body/p', startOffset: 0, endOffset: 6, text: '完整备份' },
-      sm2: { interval: 1, easeFactor: 2.5, repetitions: 1, nextReviewAt: exportedAt },
+      review: {
+        enabled: true,
+        sm2: { interval: 1, easeFactor: 2.5, repetitions: 1, nextReviewAt: exportedAt },
+      },
     },
   },
   tags: ['技术'],
-  settings: { defaultColor: '#FFD700', presetColors: ['#FFD700'], reviewTag: '学习' },
+  settings: { defaultColor: '#FFD700', presetColors: ['#FFD700'] },
   groupByDomain: true,
   sortBy: 'time-desc',
   unrelatedCache: { ignored: true },
@@ -42,7 +44,7 @@ assert.equal(payload.app, 'MarkBuddy');
 assert.equal(payload.version, 1);
 assert.equal(payload.exportedAt, '2026-06-30T00:00:00.000Z');
 assert.deepEqual(Object.keys(payload.data), BACKUP_KEYS);
-assert.equal(payload.data.highlights.h1.sm2.repetitions, 1);
+assert.equal(payload.data.highlights.h1.review.sm2.repetitions, 1);
 assert.equal(payload.data.unrelatedCache, undefined);
 
 const parsed = parseBackupPayload(JSON.stringify(payload));

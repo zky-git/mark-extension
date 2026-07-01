@@ -165,6 +165,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         case 'UPDATE_REVIEW_RESULT':
           sendResponse(await updateReviewResult(message.payload.id, message.payload.quality));
           break;
+        case 'UPDATE_HIGHLIGHT_REVIEW':
+          sendResponse(await updateHighlightReview(message.payload.id, message.payload.enabled));
+          break;
         case 'UPDATE_HIGHLIGHT_TAGS':
           sendResponse(await updateHighlightTags(message.payload.id, message.payload.tags));
           break;
@@ -375,6 +378,8 @@ async function getSettings() {
   return (await getStorage('settings')) || {
     defaultColor: '#FFD700',
     presetColors: ['#FFD700', '#90EE90', '#87CEEB', '#FFB6C1', '#DDA0DD'],
+    themeMode: 'system',
+    reviewEnabled: true,
   };
 }
 
@@ -384,6 +389,8 @@ async function saveSettings(settings) {
 }
 
 // ─── Review (SM-2 Spaced Repetition) ─────────────────────────────────────────
+
+const REVIEW_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Standard SM-2 algorithm.
@@ -408,27 +415,36 @@ function computeSM2(sm2, quality) {
     interval = 1;
   }
 
-  const nextReviewAt = Date.now() + interval * 24 * 60 * 60 * 1000;
+  const nextReviewAt = Date.now() + interval * REVIEW_INTERVAL_MS;
   return { interval, easeFactor, repetitions, nextReviewAt };
+}
+
+function createInitialReviewState(enabled) {
+  return {
+    enabled,
+    sm2: {
+      interval: 0,
+      easeFactor: 2.5,
+      repetitions: 0,
+      nextReviewAt: 0,
+    },
+  };
 }
 
 async function getDueReviews() {
   const highlights = (await getStorage('highlights')) || {};
-  const settings = await getSettings();
-  const reviewTag = (settings.reviewTag || '学习').trim();
   const now = Date.now();
 
   const due = Object.values(highlights).filter(h => {
     if (h.active === false) return false;
-    const tags = h.tags || [];
-    if (!tags.includes(reviewTag)) return false;
-    if (!h.sm2) return true; // never reviewed — due immediately
-    return h.sm2.nextReviewAt <= now;
+    if (h.review?.enabled !== true) return false;
+    if (!h.review.sm2) return true; // never reviewed — due immediately
+    return h.review.sm2.nextReviewAt <= now;
   });
 
   return due.sort((a, b) => {
-    const aNext = a.sm2?.nextReviewAt || 0;
-    const bNext = b.sm2?.nextReviewAt || 0;
+    const aNext = a.review?.sm2?.nextReviewAt || 0;
+    const bNext = b.review?.sm2?.nextReviewAt || 0;
     return aNext - bNext;
   });
 }
@@ -437,10 +453,26 @@ async function updateReviewResult(id, quality) {
   const highlights = (await getStorage('highlights')) || {};
   if (!highlights[id]) return { success: false, error: 'Highlight not found' };
 
-  const current = highlights[id].sm2 || { interval: 0, easeFactor: 2.5, repetitions: 0, nextReviewAt: 0 };
-  highlights[id].sm2 = computeSM2(current, quality);
+  const review = highlights[id].review || createInitialReviewState(true);
+  review.enabled = true;
+  review.sm2 = computeSM2(review.sm2 || createInitialReviewState(true).sm2, quality);
+  highlights[id].review = review;
   await setStorage('highlights', highlights);
-  return { success: true, sm2: highlights[id].sm2 };
+  return { success: true, sm2: highlights[id].review.sm2 };
+}
+
+async function updateHighlightReview(id, enabled) {
+  const highlights = (await getStorage('highlights')) || {};
+  if (!highlights[id]) return { success: false, error: 'Highlight not found' };
+
+  const current = highlights[id].review || {};
+  highlights[id].review = {
+    ...current,
+    enabled: Boolean(enabled),
+    sm2: current.sm2 || createInitialReviewState(Boolean(enabled)).sm2,
+  };
+  await setStorage('highlights', highlights);
+  return { success: true, review: highlights[id].review };
 }
 
 async function updateHighlightTags(id, tags) {

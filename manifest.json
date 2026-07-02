@@ -10,7 +10,8 @@
     "contextMenus",
     "scripting",
     "activeTab",
-    "webNavigation"
+    "webNavigation",
+    "alarms"
   ],
   "background": {
     "service_worker": "service-worker.js"

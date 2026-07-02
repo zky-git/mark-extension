@@ -69,6 +69,54 @@ async function runContentCommand(tab, func, label) {
 
 // ─── Initialization ──────────────────────────────────────────────────────────
 
+const REVIEW_BADGE_ALARM_NAME = 'markbuddy-review-badge-refresh';
+const REVIEW_BADGE_REFRESH_MINUTES = 60;
+const REVIEW_BADGE_COLOR = '#ef4444';
+const REVIEW_BADGE_UPDATE_MESSAGE = 'REVIEW_BADGE_UPDATED';
+
+function canMessageContentTab(tab) {
+  return Boolean(tab?.id && /^https?:\/\//.test(tab.url || ''));
+}
+
+async function initializeReviewBadgeReminder() {
+  chrome.alarms.create(REVIEW_BADGE_ALARM_NAME, {
+    periodInMinutes: REVIEW_BADGE_REFRESH_MINUTES,
+  });
+  await refreshReviewBadge();
+}
+
+async function refreshReviewBadge() {
+  const settings = await getSettings();
+  if (settings.reviewEnabled === false) {
+    chrome.action.setBadgeText({ text: '' });
+    await broadcastReviewBadgeCount(0);
+    return;
+  }
+
+  const dueCount = (await getDueReviews()).length;
+  chrome.action.setBadgeText({ text: dueCount > 0 ? String(dueCount) : '' });
+
+  if (dueCount > 0) {
+    chrome.action.setBadgeBackgroundColor({ color: REVIEW_BADGE_COLOR });
+  }
+  await broadcastReviewBadgeCount(dueCount);
+}
+
+async function broadcastReviewBadgeCount(count) {
+  const tabs = await chrome.tabs.query({});
+  await Promise.all(tabs.filter(canMessageContentTab).map(tab => new Promise((resolve) => {
+    chrome.tabs.sendMessage(
+      tab.id,
+      { type: REVIEW_BADGE_UPDATE_MESSAGE, count },
+      () => {
+        // Accessing lastError clears missing-content-script errors for restricted pages.
+        chrome.runtime.lastError;
+        resolve();
+      }
+    );
+  })));
+}
+
 chrome.runtime.onInstalled.addListener(async () => {
   // Open side panel on extension icon click
   await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
@@ -85,6 +133,18 @@ chrome.runtime.onInstalled.addListener(async () => {
     title: '🖊️ 收藏划线 (MarkBuddy)',
     contexts: ['selection'],
   });
+
+  await initializeReviewBadgeReminder();
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  initializeReviewBadgeReminder();
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === REVIEW_BADGE_ALARM_NAME) {
+    refreshReviewBadge();
+  }
 });
 
 // ─── Context Menu ─────────────────────────────────────────────────────────────
@@ -270,6 +330,7 @@ async function deleteBookmark(url) {
     delete bookmarks[url];
     await setStorage('bookmarks', bookmarks);
     await syncTags(bookmarks);
+    await refreshReviewBadge();
   }
 
   return { success: true };
@@ -289,6 +350,7 @@ async function deleteHighlight(id) {
       bookmarks[url].highlightIds = (bookmarks[url].highlightIds || []).filter(hid => hid !== id);
       await setStorage('bookmarks', bookmarks);
     }
+    await refreshReviewBadge();
   }
 
   return { success: true };
@@ -385,6 +447,7 @@ async function getSettings() {
 
 async function saveSettings(settings) {
   await setStorage('settings', settings);
+  await refreshReviewBadge();
   return { success: true };
 }
 
@@ -458,6 +521,7 @@ async function updateReviewResult(id, quality) {
   review.sm2 = computeSM2(review.sm2 || createInitialReviewState(true).sm2, quality);
   highlights[id].review = review;
   await setStorage('highlights', highlights);
+  await refreshReviewBadge();
   return { success: true, sm2: highlights[id].review.sm2 };
 }
 
@@ -472,6 +536,7 @@ async function updateHighlightReview(id, enabled) {
     sm2: current.sm2 || createInitialReviewState(Boolean(enabled)).sm2,
   };
   await setStorage('highlights', highlights);
+  await refreshReviewBadge();
   return { success: true, review: highlights[id].review };
 }
 

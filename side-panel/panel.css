@@ -1357,9 +1357,9 @@ body {
 }
 
 .highlight-review-btn.active {
-  border-color: rgba(16, 185, 129, 0.45);
-  background: rgba(16, 185, 129, 0.12);
-  color: var(--success);
+  border-color: rgba(239, 68, 68, 0.45);
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
 }
 
 .highlight-delete-btn {

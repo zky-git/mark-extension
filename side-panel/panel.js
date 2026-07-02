@@ -858,9 +858,9 @@
       const inReview = h.review?.enabled === true;
       const reviewBtn = document.createElement('button');
       reviewBtn.className = 'highlight-review-btn' + (inReview ? ' active' : '');
-      reviewBtn.title = inReview ? '移出复习队列' : '加入复习队列';
-      reviewBtn.setAttribute('aria-label', inReview ? '移出复习队列' : '加入复习队列');
-      reviewBtn.textContent = inReview ? '移出复习' : '加入复习';
+      reviewBtn.title = inReview ? '不再提醒这条划线' : '提醒我再看这条划线';
+      reviewBtn.setAttribute('aria-label', inReview ? '不再提醒这条划线' : '提醒我再看这条划线');
+      reviewBtn.textContent = inReview ? '不再提醒' : '提醒我再看';
       reviewBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
         await sendMessage('UPDATE_HIGHLIGHT_REVIEW', { id: h.id, enabled: !inReview });
@@ -1291,7 +1291,7 @@
       if (!enabled && hasReviewEnabledHighlights()) {
         e.target.checked = true;
         settings.reviewEnabled = true;
-        showPanelNotice('已有划线处于复习中，请先移出复习队列后再关闭。');
+        showPanelNotice('已有划线开启提醒，请先设为不再提醒后再关闭。');
         return;
       }
 
@@ -1324,7 +1324,7 @@
     }
     const due = await sendMessage('GET_DUE_REVIEWS');
     if (due && due.length > 0) {
-      bannerText.textContent = `今日待复习 ${due.length} 条`;
+      bannerText.textContent = `今日重温 ${due.length} 条`;
       banner.classList.remove('hidden');
     } else {
       banner.classList.add('hidden');
@@ -1339,16 +1339,16 @@
 
   async function startReviewMode() {
     if (!isReviewFeatureEnabled()) {
-      showPanelNotice('划线复习已关闭。', 'success');
+      showPanelNotice('唤醒收藏已关闭。', 'success');
       return;
     }
     const due = await sendMessage('GET_DUE_REVIEWS');
     if (!due) {
-      showPanelNotice('无法开始复习，请稍后重试。');
+      showPanelNotice('无法开始回顾，请稍后重试。');
       return;
     }
     if (due.length === 0) {
-      showPanelNotice('暂无待复习内容。', 'success');
+      showPanelNotice('暂无待重温内容。', 'success');
       updateReviewBanner();
       return;
     }
@@ -1373,7 +1373,7 @@
     // Progress
     const pct = total > 0 ? (reviewIndex / total) * 100 : 0;
     document.getElementById('review-progress-fill').style.width = `${pct}%`;
-    document.getElementById('review-counter').textContent = `${reviewIndex + 1} / ${total} 条待复习`;
+    document.getElementById('review-counter').textContent = `${reviewIndex + 1} / ${total} 条待重温`;
 
     // Card content
     document.getElementById('review-card-text').textContent = current.text || '';
@@ -1433,13 +1433,13 @@
     const statsEl = document.getElementById('review-summary-stats');
     statsEl.innerHTML = [
       `<div class="review-summary-row"><span class="label">完成</span><span class="value">${total} 条</span></div>`,
-      `<div class="review-summary-row"><span class="label">记住了</span><span class="value good">${remembered} 条（${memRate}%）</span></div>`,
-      `<div class="review-summary-row"><span class="label">模糊</span><span class="value warn">${fuzzy} 条</span></div>`,
-      `<div class="review-summary-row"><span class="label">没记住</span><span class="value bad">${forgot} 条</span></div>`,
+      `<div class="review-summary-row"><span class="label">仍然有用</span><span class="value good">${remembered} 条（${memRate}%）</span></div>`,
+      `<div class="review-summary-row"><span class="label">再看看</span><span class="value warn">${fuzzy} 条</span></div>`,
+      `<div class="review-summary-row"><span class="label">暂时没用</span><span class="value bad">${forgot} 条</span></div>`,
     ].join('');
 
     document.getElementById('review-summary').classList.remove('hidden');
-    document.getElementById('review-counter').textContent = '复习完成 🎉';
+    document.getElementById('review-counter').textContent = '回顾完成 🎉';
   }
 
   // ─── Review Event Listeners ───────────────────────────────────────────────────

@@ -85,8 +85,8 @@
       <div class="settings-section settings-row">
         <div class="settings-row-info">
           <span class="settings-row-label">
-            划线复习
-            <span class="info-tooltip-wrap" tabindex="0" aria-label="查看 SM-2 复习策略说明">
+            唤醒收藏
+            <span class="info-tooltip-wrap" tabindex="0" aria-label="查看 SM-2 提醒节奏说明">
               <span class="info-icon">
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
                   <circle cx="12" cy="12" r="10"></circle>
@@ -95,18 +95,18 @@
                 </svg>
               </span>
               <span class="info-tooltip-content">
-                <span class="tooltip-title"><span class="tooltip-emoji">🧠</span>SM-2 复习策略</span>
+                <span class="tooltip-title"><span class="tooltip-emoji">⏰</span>SM-2 提醒节奏</span>
                 <ul class="tooltip-list">
-                  <li>复习对象是你手动加入队列的划线摘录</li>
-                  <li>每次复习用三档反馈：没记住、模糊、记住了</li>
-                  <li>系统会根据反馈动态调整下一次复习时间</li>
+                  <li>提醒对象是你手动加入队列的划线摘录</li>
+                  <li>每次回顾用三档反馈：暂时没用、再看看、仍然有用</li>
+                  <li>系统会根据反馈动态调整下一次提醒时间</li>
                 </ul>
               </span>
             </span>
           </span>
-          <span class="settings-row-desc">开启后可将划线加入间隔复习；关闭后列表隐藏复习按钮</span>
+          <span class="settings-row-desc">开启后可把划线加入定时提醒；关闭后列表隐藏提醒按钮</span>
         </div>
-        <label class="switch" id="review-enabled-switch" aria-label="开启划线复习">
+        <label class="switch" id="review-enabled-switch" aria-label="开启唤醒收藏">
           <input type="checkbox" id="review-enabled-checkbox" checked />
           <span class="switch-track">
             <span class="switch-thumb"></span>
@@ -129,9 +129,9 @@
 
   <!-- Review Banner (hidden when no due items) -->
   <div class="review-banner hidden" id="review-banner">
-    <span class="review-banner-icon">📖</span>
-    <span class="review-banner-text" id="review-banner-text">今日待复习 0 条</span>
-    <button class="review-banner-btn" id="review-start-btn">开始复习</button>
+    <span class="review-banner-icon">🔔</span>
+    <span class="review-banner-text" id="review-banner-text">今日重温 0 条</span>
+    <button class="review-banner-btn" id="review-start-btn">看看这些</button>
   </div>
 
   <!-- Search + Filter -->
@@ -218,14 +218,14 @@
   </dialog>
 
   <!-- Fullscreen Review Mode (hidden by default) -->
-  <div class="review-mode hidden" id="review-mode" role="main" aria-label="复习模式">
+  <div class="review-mode hidden" id="review-mode" role="main" aria-label="回顾模式">
     <!-- Review Progress -->
     <div class="review-progress-bar">
       <div class="review-progress-fill" id="review-progress-fill"></div>
     </div>
     <div class="review-header">
       <span class="review-counter" id="review-counter">0 / 0</span>
-      <button class="review-exit-btn" id="review-exit-btn" title="退出复习">✕ 退出</button>
+      <button class="review-exit-btn" id="review-exit-btn" title="退出回顾">✕ 退出</button>
     </div>
 
     <!-- Card Area -->
@@ -245,15 +245,15 @@
 
     <!-- Score Buttons -->
     <div class="review-score-btns" id="review-score-btns">
-      <button class="review-score-btn forgot" id="score-forgot">没记住</button>
-      <button class="review-score-btn fuzzy" id="score-fuzzy">模糊</button>
-      <button class="review-score-btn remembered" id="score-remembered">记住了 ✓</button>
+      <button class="review-score-btn forgot" id="score-forgot">暂时没用</button>
+      <button class="review-score-btn fuzzy" id="score-fuzzy">再看看</button>
+      <button class="review-score-btn remembered" id="score-remembered">仍然有用 ✓</button>
     </div>
 
     <!-- Session Summary (shown after all cards done) -->
     <div class="review-summary hidden" id="review-summary">
       <div class="review-summary-icon">🎉</div>
-      <h2 class="review-summary-title">今日复习完成！</h2>
+      <h2 class="review-summary-title">今日回顾完成！</h2>
       <div class="review-summary-stats" id="review-summary-stats"></div>
       <button class="review-summary-close-btn" id="review-summary-close-btn">回到收藏列表</button>
     </div>

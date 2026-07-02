@@ -26,4 +26,10 @@ assert.equal(
   'commands does not require a permissions entry'
 );
 
+assert.equal(
+  manifest.permissions.includes('alarms'),
+  true,
+  'review badge reminders require the alarms permission'
+);
+
 console.log('manifest commands tests passed');

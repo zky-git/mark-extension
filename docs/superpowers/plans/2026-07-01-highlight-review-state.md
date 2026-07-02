@@ -311,3 +311,31 @@ git diff --stat
 ```
 
 预期：差异集中在复习模型、侧边栏 UI、测试和必要文案。
+
+### 任务 7：提醒化文案与徽标同步
+
+**文件:**
+- 修改: `manifest.json`
+- 修改: `service-worker.js`
+- 修改: `content/content.js`
+- 修改: `content/content.css`
+- 修改: `side-panel/panel.html`
+- 修改: `side-panel/panel.js`
+- 修改: `side-panel/panel.css`
+- 修改: `tests/manifest-commands.test.js`
+- 修改: `tests/panel-structure.test.js`
+- 修改: `tests/service-worker-review.test.js`
+- 修改: `README.md`
+- 修改: `CHROMEWEBSTORE.md`
+
+- [x] **步骤 1：调整用户可见文案**
+
+将侧边栏里的“复习”表达改成“唤醒收藏 / 今日重温 / 提醒我再看 / 不再提醒”，并把三档反馈调整为“暂时没用 / 再看看 / 仍然有用”。
+
+- [x] **步骤 2：增加待重温徽标**
+
+后台新增定时刷新逻辑，使用 `chrome.alarms` 每小时刷新 Chrome 扩展图标徽标，并通过 `REVIEW_BADGE_UPDATED` 向内容脚本同步网页浮动入口徽标。
+
+- [x] **步骤 3：补齐测试和文档**
+
+测试覆盖 `alarms` 权限、后台徽标刷新、内容脚本徽标节点和可见文案；文档同步描述“唤醒收藏”、待重温徽标和新增权限用途。

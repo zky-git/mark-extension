@@ -8,14 +8,15 @@
 - 再次访问网页时自动恢复高亮
 - 在侧边面板中搜索标题、URL、高亮内容和备注
 - 使用标签、域名分组和排序管理收藏
-- 将重要高亮加入复习队列
+- 将重要高亮加入“唤醒收藏”，按 SM-2 节奏定时重温
+- 在扩展图标和网页浮动入口查看待重温数量徽标
 - 导出 Markdown，或用 JSON 备份/恢复本地数据
 
-## 复习模型
+## 唤醒收藏模型
 
-复习功能以单条划线为对象。新划线默认不进入复习队列，用户需要在侧边面板中手动把重要摘录加入复习。复习状态保存到高亮对象的 `review.enabled`，SM-2 排期状态保存到 `review.sm2`，不再通过普通标签判断是否复习。
+唤醒收藏以单条划线为对象。新划线默认不进入提醒队列，用户需要在侧边面板中手动把重要摘录设为“提醒我再看”。提醒状态保存到高亮对象的 `review.enabled`，SM-2 排期状态保存到 `review.sm2`，不再通过普通标签判断是否需要重温。
 
-SM-2 的 `interval` 按天计算：首次记住后约 1 天再复习，第二次约 6 天，后续按 ease factor 扩展。
+SM-2 的 `interval` 按天计算：首次确认“仍然有用”后约 1 天再提醒，第二次约 6 天，后续按 ease factor 扩展。到期数量会同步显示在 Chrome 扩展图标徽标和网页浮动入口徽标上；后台使用 `chrome.alarms` 每小时刷新一次，并在开启/关闭提醒、删除划线、提交回顾反馈或修改设置后立即刷新。
 
 ## 快速开始
 
@@ -54,13 +55,13 @@ node tests/package-script.test.js
 ```
 mark-extension/
 ├── manifest.json              # 扩展配置（Manifest V3）
-├── service-worker.js          # 后台服务：菜单注册、数据存储
+├── service-worker.js          # 后台服务：菜单注册、数据存储、提醒徽标刷新
 ├── content/
 │   ├── content.js             # 内容脚本：划线、浮动工具栏、高亮恢复
 │   └── content.css            # 内容脚本样式
 ├── side-panel/
 │   ├── panel.html             # 侧边面板 HTML
-│   ├── panel.js               # 面板逻辑：列表渲染、搜索、过滤
+│   ├── panel.js               # 面板逻辑：列表渲染、搜索、过滤、唤醒收藏
 │   ├── panel.css              # 面板样式（深/浅色自适应）
 │   ├── export-markdown.js     # Markdown 导出
 │   └── backup-data.js         # JSON 备份/恢复

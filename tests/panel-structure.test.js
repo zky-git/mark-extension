@@ -5,6 +5,8 @@ const html = fs.readFileSync('side-panel/panel.html', 'utf8');
 const panelJs = fs.readFileSync('side-panel/panel.js', 'utf8');
 const panelCss = fs.readFileSync('side-panel/panel.css', 'utf8');
 const serviceWorker = fs.readFileSync('service-worker.js', 'utf8');
+const contentJs = fs.readFileSync('content/content.js', 'utf8');
+const contentCss = fs.readFileSync('content/content.css', 'utf8');
 
 function assertContains(id) {
   assert.match(html, new RegExp(`id="${id}"`), `panel.html should contain #${id}`);
@@ -30,7 +32,9 @@ function assertContains(id) {
 assert.match(html, /<option value="system">跟随系统<\/option>/, 'theme selector should default to a system option');
 assert.match(html, /<option value="light">浅色模式<\/option>/, 'theme selector should include light mode');
 assert.match(html, /<option value="dark">深色模式<\/option>/, 'theme selector should include dark mode');
-assert.match(html, /id="review-start-btn">开始复习<\/button>/, 'review banner button should clearly say 开始复习');
+assert.match(html, /id="review-start-btn">看看这些<\/button>/, 'review banner button should invite lightweight rediscovery');
+assert.match(html, /class="review-banner-icon">🔔<\/span>/, 'review banner should use a reminder icon instead of a study icon');
+assert.match(html, /id="review-banner-text">今日重温 0 条<\/span>/, 'review banner should frame due items as rediscovery');
 
 const searchInputMatch = html.match(/<input\b(?=[^>]*\bid="search-input")[^>]*>/);
 assert.ok(searchInputMatch, 'panel.html should contain #search-input input');
@@ -94,17 +98,42 @@ assert.match(panelJs, /getElementById\('theme-mode-select'\)/, 'panel.js should 
 assert.match(panelJs, /settings\.themeMode = themeMode/, 'panel.js should persist theme mode in settings');
 assert.match(serviceWorker, /themeMode: 'system'/, 'default settings should follow system theme');
 assert.match(serviceWorker, /reviewEnabled: true/, 'default settings should enable highlight review');
+assert.match(
+  serviceWorker,
+  /REVIEW_BADGE_UPDATED/,
+  'service worker should broadcast review count updates to content scripts'
+);
+assert.match(
+  contentJs,
+  /id="markbuddy-sidebar-trigger-badge"/,
+  'floating sidebar trigger should include a review count badge node'
+);
+assert.match(
+  contentJs,
+  /sendMessage\('GET_DUE_REVIEWS'/,
+  'floating sidebar trigger should load the initial due review count'
+);
+assert.match(
+  contentJs,
+  /message\.type === 'REVIEW_BADGE_UPDATED'/,
+  'floating sidebar trigger should react to pushed review count updates'
+);
+assert.match(
+  contentCss,
+  /#markbuddy-sidebar-trigger-badge/,
+  'content CSS should style the floating sidebar review count badge'
+);
 assert.match(panelJs, /function showPanelNotice\(message, tone = 'danger'\)/, 'panel.js should expose a reusable panel notice for navigation failures');
 assert.match(panelJs, /notice\.id = 'panel-notice'/, 'panel.js should render an in-panel notice when needed');
 assert.match(panelJs, /function openBookmarkUrl\(url\)/, 'panel.js should open bookmark URLs through a failure-aware helper');
 assert.match(panelJs, /无法打开网页，请检查链接是否有效。/, 'panel.js should show a clear message when a saved page cannot be opened');
 assert.match(panelJs, /title\.addEventListener\('click'[\s\S]*?e\.preventDefault\(\)[\s\S]*?openBookmarkUrl\(bm\.url\)/, 'bookmark title clicks should use the failure-aware opener instead of default anchor navigation');
 assert.doesNotMatch(panelJs, /if \(!due \|\| due\.length === 0\) return;/, 'review start should not fail silently when there are no due reviews');
-assert.match(panelJs, /showPanelNotice\('暂无待复习内容。', 'success'\)/, 'review start should explain when there is nothing to review');
+assert.match(panelJs, /showPanelNotice\('暂无待重温内容。', 'success'\)/, 'review start should explain when there is nothing to review');
 assert.match(
   panelJs,
-  /reviewBtn\.textContent = inReview \? '移出复习' : '加入复习'/,
-  'inactive highlight review buttons should clearly say 加入复习'
+  /reviewBtn\.textContent = inReview \? '不再提醒' : '提醒我再看'/,
+  'highlight reminder buttons should describe the reminder subscription action'
 );
 assert.doesNotMatch(
   panelJs,
@@ -113,8 +142,15 @@ assert.doesNotMatch(
 );
 assert.match(
   panelJs,
-  /reviewBtn\.setAttribute\('aria-label', inReview \? '移出复习队列' : '加入复习队列'\)/,
+  /reviewBtn\.setAttribute\('aria-label', inReview \? '不再提醒这条划线' : '提醒我再看这条划线'\)/,
   'compact highlight review buttons should keep an accessible action label'
+);
+const activeReviewBtnRuleMatch = panelCss.match(/\.highlight-review-btn\.active\s*\{[^}]*\}/);
+assert.ok(activeReviewBtnRuleMatch, 'panel.css should style the active reminder button');
+assert.match(
+  activeReviewBtnRuleMatch[0],
+  /#ef4444|239,\s*68,\s*68|var\(--danger\)/,
+  'active reminder button should use a red danger treatment for 不再提醒'
 );
 assert.match(
   panelJs,
@@ -133,18 +169,18 @@ assert.match(
 );
 assert.match(
   html,
-  /开启后可将划线加入间隔复习；关闭后列表隐藏复习按钮/,
+  /开启后可把划线加入定时提醒；关闭后列表隐藏提醒按钮/,
   'review settings should explain what the switch controls'
 );
 assert.match(
   html,
-  /<span class="settings-row-label">[\s\S]*?划线复习[\s\S]*?info-tooltip-wrap/,
+  /<span class="settings-row-label">[\s\S]*?唤醒收藏[\s\S]*?info-tooltip-wrap/,
   'review settings should show an info tooltip beside the label'
 );
 assert.match(
   html,
-  /SM-2 复习策略/,
-  'review tooltip should describe the SM-2 strategy'
+  /SM-2 提醒节奏/,
+  'review tooltip should describe the SM-2 reminder cadence'
 );
 assert.match(
   html,
@@ -153,7 +189,12 @@ assert.match(
 );
 assert.match(
   html,
-  /动态调整下一次复习时间/,
+  /每次回顾用三档反馈：暂时没用、再看看、仍然有用/,
+  'review tooltip should frame feedback around current usefulness instead of memory testing'
+);
+assert.match(
+  html,
+  /动态调整下一次提醒时间/,
   'review tooltip should explain that review timing adapts'
 );
 assert.match(
@@ -173,7 +214,7 @@ assert.match(
 );
 assert.match(
   panelJs,
-  /已有划线处于复习中，请先移出复习队列后再关闭。/,
+  /已有划线开启提醒，请先设为不再提醒后再关闭。/,
   'turning review off should explain why it is blocked when highlights are in review'
 );
 assert.match(
@@ -216,6 +257,18 @@ assert.doesNotMatch(
   /settings\.reviewTag/,
   'panel.js should not depend on reviewTag'
 );
+
+assert.match(html, /id="score-forgot">暂时没用<\/button>/, 'low review feedback should use usefulness wording');
+assert.match(html, /id="score-fuzzy">再看看<\/button>/, 'middle review feedback should use usefulness wording');
+assert.match(html, /id="score-remembered">仍然有用 ✓<\/button>/, 'high review feedback should use usefulness wording');
+assert.doesNotMatch(html, />没记住<\/button>/, 'review buttons should not frame feedback as memory failure');
+assert.doesNotMatch(html, />模糊<\/button>/, 'review buttons should not frame feedback as fuzzy recall');
+assert.doesNotMatch(html, />记住了 ✓<\/button>/, 'review buttons should not frame feedback as memorized recall');
+assert.match(panelJs, /<span class="label">仍然有用<\/span>/, 'review summary should use usefulness wording for high feedback');
+assert.match(panelJs, /<span class="label">再看看<\/span>/, 'review summary should use usefulness wording for middle feedback');
+assert.match(panelJs, /<span class="label">暂时没用<\/span>/, 'review summary should use usefulness wording for low feedback');
+assert.doesNotMatch(html, /复习/, 'visible side panel HTML should not use study/exam wording');
+assert.doesNotMatch(panelJs, /'[^']*复习[^']*'|"[^"]*复习[^"]*"/, 'visible side panel strings should not use study/exam wording');
 
 const scriptOrder = [
   'export-markdown.js',

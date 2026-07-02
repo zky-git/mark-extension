@@ -18,6 +18,7 @@
   let pageHighlights = []; // Local store of highlights on the current page
   let activePopover = null; // Store reference to open popover
   let activePopoverMark = null; // Mark element associated with open popover
+  let reviewDueCount = 0;
   const MAX_HIGHLIGHT_TEXT_LENGTH = 800;
   const MAX_HIGHLIGHT_TEXT_NODES = 20;
 
@@ -937,6 +938,9 @@
       setTimeout(restoreHighlights, 800);
       setTimeout(restoreHighlights, 1500);
       sendResponse({ success: true });
+    } else if (message.type === 'REVIEW_BADGE_UPDATED') {
+      updateSidebarTriggerBadge(message.count);
+      sendResponse({ success: true });
     }
   });
 
@@ -948,12 +952,14 @@
         if (toolbar) {
           createToolbar();
         }
+        refreshSidebarTriggerBadge();
       }
       if (changes.highlights) {
         const url = window.location.href;
         const highlights = await sendMessage('GET_HIGHLIGHTS_FOR_URL', { url });
         pageHighlights = highlights || [];
         updateHighlightDOMNotes();
+        refreshSidebarTriggerBadge();
       }
     }
   });
@@ -1055,6 +1061,7 @@
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block; pointer-events: none;">
         <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
       </svg>
+      <span id="markbuddy-sidebar-trigger-badge" aria-label="0 条待重温"></span>
       <div id="markbuddy-sidebar-trigger-tooltip">打开/关闭 MarkBuddy 面板</div>
     `;
     trigger.addEventListener('click', async (e) => {
@@ -1064,6 +1071,7 @@
     });
 
     document.body.appendChild(trigger);
+    updateSidebarTriggerBadge(reviewDueCount);
     makeElementDraggable(trigger);
 
     // Keep trigger within viewport bounds during window resizing or side panel shrinking
@@ -1087,6 +1095,20 @@
     });
   }
 
+  function updateSidebarTriggerBadge(count) {
+    reviewDueCount = Math.max(0, Number(count) || 0);
+    const badge = document.getElementById('markbuddy-sidebar-trigger-badge');
+    if (!badge) return;
+    badge.textContent = reviewDueCount > 99 ? '99+' : String(reviewDueCount);
+    badge.setAttribute('aria-label', `${reviewDueCount} 条待重温`);
+    badge.classList.toggle('hidden', reviewDueCount === 0);
+  }
+
+  async function refreshSidebarTriggerBadge() {
+    const due = await sendMessage('GET_DUE_REVIEWS', {});
+    updateSidebarTriggerBadge(Array.isArray(due) ? due.length : 0);
+  }
+
   // ─── Init ─────────────────────────────────────────────────────────────────────
 
   async function init() {
@@ -1095,6 +1117,7 @@
     selectedColor = settings.defaultColor;
     await restoreHighlights();
     createSidebarTrigger();
+    await refreshSidebarTriggerBadge();
   }
 
   // Wait for DOM to be ready

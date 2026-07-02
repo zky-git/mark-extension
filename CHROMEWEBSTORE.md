@@ -1,6 +1,6 @@
 # Chrome Web Store Listing — MarkBuddy
 
-> Last Updated: 2026-06-30
+> Last Updated: 2026-07-02
 
 ## Store Listing
 
@@ -8,19 +8,20 @@
 MarkBuddy
 
 **Short Description** [REQUIRED]
-Highlight useful web passages, find them later, review key excerpts, and export your data.
+Highlight useful web passages, find them later, rediscover key excerpts, and export your data.
 
 **Detailed Description** [REQUIRED]
-MarkBuddy is a browser reading companion for people who learn and research on the web. It helps you highlight useful passages, find the original source later, review selected excerpts, and keep your data portable.
+MarkBuddy is a browser reading companion for people who learn and research on the web. It helps you highlight useful passages, find the original source later, rediscover selected excerpts at the right time, and keep your data portable.
 
 FEATURES
 • Text Highlighting — Highlight text on any page using the floating toolbar, context menu, or keyboard shortcut.
 • Find-Back Library — Search page titles, URLs, highlight text, and notes from the side panel.
 • Highlight Color Customization — Choose from a palette of highlighting colors.
-• Side Panel Organizer — View saved pages, highlights, tags, notes, and review status in a side panel.
+• Side Panel Organizer — View saved pages, highlights, tags, notes, and reminder status in a side panel.
 • Auto-Restore — Highlights are automatically re-applied when you visit the webpage again.
 • Light Recovery — If page text shifts slightly, MarkBuddy can recover highlights from the saved text snapshot.
-• Optional Review — Add only important highlights to a spaced-review queue.
+• Optional Rediscovery Reminders — Add only important highlights to a lightweight SM-2 reminder queue.
+• Due Count Badges — See how many highlights are ready to revisit on the extension icon and floating page trigger.
 • Markdown Export — Export all, filtered, or single-page highlights to Markdown for note apps.
 • JSON Backup — Back up and restore local MarkBuddy data.
 • Keyboard Shortcuts — Open the side panel or save the current selection quickly.
@@ -29,10 +30,10 @@ FEATURES
 HOW TO USE
 1. Click the extension icon or press Alt+Shift+M to open the MarkBuddy side panel.
 2. Select text on a webpage, then use the floating toolbar, right-click menu, or Alt+Shift+H to save a highlight.
-3. Use the side panel to search, filter, add notes, jump back to the source, review selected highlights, or export your data.
+3. Use the side panel to search, filter, add notes, jump back to the source, revisit selected highlights, or export your data.
 
 PRIVACY
-All your data (bookmarks, highlights, notes, colors, review state, and settings) is stored locally on your device using Chrome's extension storage API. We do not collect, transmit, or share your personal data or browsing history with third parties or external servers.
+All your data (bookmarks, highlights, notes, colors, reminder state, and settings) is stored locally on your device using Chrome's extension storage API. We do not collect, transmit, or share your personal data or browsing history with third parties or external servers.
 
 PERMISSIONS
 • "sidePanel" — Needed to display the side panel where you organize highlights.
@@ -42,6 +43,7 @@ PERMISSIONS
 • "scripting" — Needed to apply highlights to the text on webpages.
 • "activeTab" — Needed to temporarily access the current tab when you perform a highlight action.
 • "webNavigation" — Needed to detect single-page app route changes and restore highlights after navigation.
+• "alarms" — Needed to refresh due-highlight reminder badges periodically.
 • Content script access on webpages — Needed to restore your saved highlights on websites you visit.
 
 SUPPORT
@@ -51,7 +53,7 @@ If you have any questions or feedback, please contact us at support@example.com 
 Productivity
 
 **Single Purpose** [REQUIRED]
-Saves highlighted web passages locally so users can find, revisit, review, and export useful webpage excerpts.
+Saves highlighted web passages locally so users can find, revisit, rediscover, and export useful webpage excerpts.
 
 **Primary Language** [REQUIRED]
 Chinese (Simplified) / English
@@ -82,6 +84,7 @@ Chinese (Simplified) / English
 | `scripting` | permissions | Injects styles and highlighting scripts into pages dynamically. |
 | `activeTab` | permissions | Obtains temporary host access on user action to perform page manipulations. |
 | `webNavigation` | permissions | Detects same-tab SPA route changes so highlights can be restored after navigation. |
+| `alarms` | permissions | Refreshes the due-highlight reminder count badge on a lightweight hourly schedule. |
 | `<all_urls>` | content_scripts.matches | Runs the content script on webpages so saved highlights can be restored when the user returns. |
 | `commands` | manifest key | Defines keyboard shortcuts. This is not a permissions entry. |
 
@@ -124,7 +127,7 @@ Chinese (Simplified) / English
 
 | Version | Date | Changes | Status |
 |---------|------|---------|--------|
-| 1.2.0 | 2026-06-30 | Aligns the product around find-back reading workflows, adds Markdown export, JSON backup/restore, highlight review opt-in controls, light highlight recovery, and keyboard shortcuts. | Draft |
+| 1.2.0 | 2026-07-02 | Aligns the product around find-back reading workflows, adds Markdown export, JSON backup/restore, opt-in rediscovery reminders, due-count badges, light highlight recovery, and keyboard shortcuts. | Draft |
 | 1.1.0 | 2026-06-29 | Adds SM-2 review mode, SPA highlight restoration, sorting, slide-over settings, and custom confirmation dialogs. | Draft |
 | 1.0.0 | 2026-06-28 | Initial Release of MarkBuddy. | Superseded draft |
 

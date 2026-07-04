@@ -46,7 +46,13 @@ assert.match(html, /<option value="dark">深色模式<\/option>/, 'theme selecto
 assert.match(html, /Git 仓库同步/, 'settings should include a Git sync section');
 assert.match(html, /Token 只保存在本机/, 'Git sync section should explain local token storage');
 assert.match(html, /<details class="settings-section git-sync-section" id="git-sync-section">/, 'Git sync settings should be collapsible');
-assert.match(html, /<summary class="settings-label git-sync-summary">Git 仓库同步<\/summary>/, 'Git sync summary should use the settings title styling');
+assert.match(html, /<summary class="git-sync-summary">/, 'Git sync summary should wrap the always-visible header content');
+assert.match(html, /<span class="settings-label git-sync-title">Git 仓库同步<\/span>/, 'Git sync title should use the settings title styling');
+assert.match(html, /<span class="git-sync-chevron" aria-hidden="true">/, 'Git sync summary should show a right-side collapse indicator');
+assert.ok(
+  html.indexOf('Token 只保存在本机') < html.indexOf('class="git-sync-body"'),
+  'Git sync description should stay inside the summary so it remains visible when collapsed'
+);
 assert.ok(
   html.indexOf('id="git-sync-section"') < html.indexOf('id="backup-export-btn"'),
   'Git sync section should appear before data backup so backup stays at the bottom'
@@ -62,6 +68,15 @@ assert.ok(settingsLabelRuleMatch, 'panel.css should style settings labels');
 assert.match(settingsLabelRuleMatch[0], /font-weight:\s*700/, 'settings labels should be bold');
 assert.match(settingsLabelRuleMatch[0], /color:\s*var\(--text-primary\)/, 'settings labels should use black primary text');
 assert.match(settingsLabelRuleMatch[0], /letter-spacing:\s*0/, 'settings labels should not use spaced-out text');
+const gitSyncSummaryRuleMatch = panelCss.match(/\.git-sync-summary\s*\{[^}]*\}/);
+assert.ok(gitSyncSummaryRuleMatch, 'panel.css should style the Git sync summary');
+assert.match(gitSyncSummaryRuleMatch[0], /display:\s*block/, 'Git sync summary should align like other setting titles');
+assert.match(gitSyncSummaryRuleMatch[0], /padding-left:\s*0/, 'Git sync summary should not get extra marker indentation');
+assert.match(panelCss, /\.git-sync-summary::-webkit-details-marker\s*\{[^}]*display:\s*none/, 'Git sync summary should hide the browser default marker');
+assert.match(panelCss, /\.git-sync-title-row\s*\{[^}]*justify-content:\s*space-between/, 'Git sync title row should place the triangle on the right');
+assert.match(panelCss, /\.git-sync-chevron\s*\{[^}]*transition:\s*transform/, 'Git sync triangle should animate state changes');
+assert.match(panelCss, /\.git-sync-section\[open\] \.git-sync-chevron\s*\{[^}]*rotate\(90deg\)/, 'Git sync triangle should rotate when expanded');
+assert.match(panelCss, /\.git-sync-summary \.settings-help\s*\{[^}]*margin-top:\s*4px/, 'Git sync description should use compact title spacing');
 assert.match(html, /id="review-start-btn">看看这些<\/button>/, 'review banner button should invite lightweight rediscovery');
 assert.match(html, /class="review-banner-icon">🔔<\/span>/, 'review banner should use a reminder icon instead of a study icon');
 assert.match(html, /id="review-banner-text">今日重温 0 条<\/span>/, 'review banner should frame due items as rediscovery');

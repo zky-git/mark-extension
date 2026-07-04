@@ -8,6 +8,7 @@
     branch: 'git-sync-branch-input',
     path: 'git-sync-path-input',
   };
+  const fixedSyncPath = 'markbuddy/data.json';
 
   function $(id) {
     return document.getElementById(id);
@@ -44,7 +45,7 @@
       owner: $(fieldIds.owner)?.value || '',
       repo: $(fieldIds.repo)?.value || '',
       branch: $(fieldIds.branch)?.value || 'main',
-      path: $(fieldIds.path)?.value || 'markbuddy/data.json',
+      path: fixedSyncPath,
     };
   }
 
@@ -55,7 +56,7 @@
     if ($(fieldIds.owner)) $(fieldIds.owner).value = config.owner || '';
     if ($(fieldIds.repo)) $(fieldIds.repo).value = config.repo || '';
     if ($(fieldIds.branch)) $(fieldIds.branch).value = config.branch || 'main';
-    if ($(fieldIds.path)) $(fieldIds.path).value = config.path || 'markbuddy/data.json';
+    if ($(fieldIds.path)) $(fieldIds.path).value = fixedSyncPath;
   }
 
   function formatSyncTime(value) {

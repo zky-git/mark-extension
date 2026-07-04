@@ -125,7 +125,15 @@
         <div class="git-sync-body">
           <div class="git-sync-grid">
             <label class="git-sync-field">
-              <span>Token</span>
+              <span class="git-sync-token-label">
+                Token
+                <span class="git-sync-token-tip-wrap" tabindex="0" aria-label="查看 GitHub Token 获取说明">
+                  <span class="git-sync-token-tip-icon">?</span>
+                  <span class="git-sync-token-tip">
+                    GitHub: Settings > Developer settings > Personal access tokens > Fine-grained tokens。只选择目标仓库，并授予 Contents: Read and write。
+                  </span>
+                </span>
+              </span>
               <input type="password" id="git-sync-token-input" autocomplete="off" placeholder="fine-grained token" />
             </label>
             <label class="git-sync-field">
@@ -142,7 +150,7 @@
             </label>
             <label class="git-sync-field git-sync-field-wide">
               <span>文件路径</span>
-              <input type="text" id="git-sync-path-input" autocomplete="off" value="markbuddy/data.json" />
+              <input type="text" id="git-sync-path-input" autocomplete="off" value="markbuddy/data.json" readonly aria-readonly="true" />
             </label>
           </div>
           <div class="git-sync-actions">

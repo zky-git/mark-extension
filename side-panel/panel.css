@@ -457,6 +457,55 @@ body {
   font-size: 11px;
 }
 
+.git-sync-token-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.git-sync-token-tip-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.git-sync-token-tip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.git-sync-token-tip {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  bottom: 18px;
+  display: none;
+  width: 230px;
+  padding: 8px 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: var(--shadow);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.git-sync-token-tip-wrap:hover .git-sync-token-tip,
+.git-sync-token-tip-wrap:focus .git-sync-token-tip,
+.git-sync-token-tip-wrap:focus-within .git-sync-token-tip {
+  display: block;
+}
+
 .git-sync-field-wide {
   grid-column: 1 / -1;
 }
@@ -478,6 +527,17 @@ body {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
+.git-sync-field input[readonly] {
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.git-sync-field input[readonly]:focus {
+  border-color: var(--border-strong);
+  box-shadow: none;
 }
 
 .git-sync-actions {

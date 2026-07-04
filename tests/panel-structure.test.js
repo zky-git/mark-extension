@@ -3,6 +3,7 @@ const fs = require('node:fs');
 
 const html = fs.readFileSync('side-panel/panel.html', 'utf8');
 const panelJs = fs.readFileSync('side-panel/panel.js', 'utf8');
+const gitSyncJs = fs.readFileSync('side-panel/git-sync.js', 'utf8');
 const panelCss = fs.readFileSync('side-panel/panel.css', 'utf8');
 const serviceWorker = fs.readFileSync('service-worker.js', 'utf8');
 const contentJs = fs.readFileSync('content/content.js', 'utf8');
@@ -49,6 +50,15 @@ assert.match(html, /<details class="settings-section git-sync-section" id="git-s
 assert.match(html, /<summary class="git-sync-summary">/, 'Git sync summary should wrap the always-visible header content');
 assert.match(html, /<span class="settings-label git-sync-title">Git 仓库同步<\/span>/, 'Git sync title should use the settings title styling');
 assert.match(html, /<span class="git-sync-chevron" aria-hidden="true">/, 'Git sync summary should show a right-side collapse indicator');
+assert.match(html, /<span class="git-sync-token-label">[\s\S]*?Token[\s\S]*?git-sync-token-tip/, 'Token field should include a help tip');
+assert.match(html, /Settings > Developer settings > Personal access tokens > Fine-grained tokens/, 'Token tip should explain where to create a fine-grained token');
+assert.match(html, /Contents: Read and write/, 'Token tip should mention the required Contents permission');
+const gitPathInputMatch = html.match(/<input\b(?=[^>]*\bid="git-sync-path-input")[^>]*>/);
+assert.ok(gitPathInputMatch, 'panel.html should contain the Git sync path input');
+assert.match(gitPathInputMatch[0], /\breadonly\b/, 'Git sync path should be read-only');
+assert.match(gitPathInputMatch[0], /\baria-readonly="true"/, 'Git sync path should expose read-only state to assistive tech');
+assert.match(gitSyncJs, /const fixedSyncPath = 'markbuddy\/data\.json'/, 'Git sync UI should use a fixed sync path');
+assert.match(gitSyncJs, /path: fixedSyncPath/, 'Git sync config should send the fixed sync path');
 assert.ok(
   html.indexOf('Token 只保存在本机') < html.indexOf('class="git-sync-body"'),
   'Git sync description should stay inside the summary so it remains visible when collapsed'
@@ -77,6 +87,8 @@ assert.match(panelCss, /\.git-sync-title-row\s*\{[^}]*justify-content:\s*space-b
 assert.match(panelCss, /\.git-sync-chevron\s*\{[^}]*transition:\s*transform/, 'Git sync triangle should animate state changes');
 assert.match(panelCss, /\.git-sync-section\[open\] \.git-sync-chevron\s*\{[^}]*rotate\(90deg\)/, 'Git sync triangle should rotate when expanded');
 assert.match(panelCss, /\.git-sync-summary \.settings-help\s*\{[^}]*margin-top:\s*4px/, 'Git sync description should use compact title spacing');
+assert.match(panelCss, /\.git-sync-token-tip/, 'panel.css should style the Token help tip');
+assert.match(panelCss, /\.git-sync-field input\[readonly\]\s*\{[^}]*background:\s*var\(--bg-surface\)/, 'read-only Git sync fields should look disabled');
 assert.match(html, /id="review-start-btn">看看这些<\/button>/, 'review banner button should invite lightweight rediscovery');
 assert.match(html, /class="review-banner-icon">🔔<\/span>/, 'review banner should use a reminder icon instead of a study icon');
 assert.match(html, /id="review-banner-text">今日重温 0 条<\/span>/, 'review banner should frame due items as rediscovery');

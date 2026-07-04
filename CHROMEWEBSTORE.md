@@ -1,6 +1,6 @@
 # Chrome Web Store Listing — MarkBuddy
 
-> Last Updated: 2026-07-02
+> Last Updated: 2026-07-05
 
 ## Store Listing
 
@@ -24,6 +24,7 @@ FEATURES
 • Due Count Badges — See how many highlights are ready to revisit on the extension icon and floating page trigger.
 • Markdown Export — Export all, filtered, or single-page highlights to Markdown for note apps.
 • JSON Backup — Back up and restore local MarkBuddy data.
+• Optional GitHub Sync — Sync MarkBuddy data to a user-owned GitHub repository file for backup and version history.
 • Keyboard Shortcuts — Open the side panel or save the current selection quickly.
 • Domain Grouping — Group saved highlights and bookmarks by website domains for easier navigation.
 
@@ -33,7 +34,9 @@ HOW TO USE
 3. Use the side panel to search, filter, add notes, jump back to the source, revisit selected highlights, or export your data.
 
 PRIVACY
-All your data (bookmarks, highlights, notes, colors, reminder state, and settings) is stored locally on your device using Chrome's extension storage API. We do not collect, transmit, or share your personal data or browsing history with third parties or external servers.
+By default, all your data (bookmarks, highlights, notes, colors, reminder state, and settings) is stored locally on your device using Chrome's extension storage API. MarkBuddy does not collect, transmit, or share your personal data or browsing history with the developer or third-party analytics services.
+
+If you explicitly configure GitHub Sync, MarkBuddy sends the selected MarkBuddy data file to GitHub API using your own token and your chosen repository. The GitHub token and repository connection settings stay in local extension storage and are not written into the synced data file.
 
 PERMISSIONS
 • "sidePanel" — Needed to display the side panel where you organize highlights.
@@ -44,6 +47,7 @@ PERMISSIONS
 • "activeTab" — Needed to temporarily access the current tab when you perform a highlight action.
 • "webNavigation" — Needed to detect single-page app route changes and restore highlights after navigation.
 • "alarms" — Needed to refresh due-highlight reminder badges periodically.
+• "https://api.github.com/*" — Needed only for the optional GitHub Sync feature when the user chooses to upload or restore data through their own GitHub repository.
 • Content script access on webpages — Needed to restore your saved highlights on websites you visit.
 
 SUPPORT
@@ -85,6 +89,7 @@ Chinese (Simplified) / English
 | `activeTab` | permissions | Obtains temporary host access on user action to perform page manipulations. |
 | `webNavigation` | permissions | Detects same-tab SPA route changes so highlights can be restored after navigation. |
 | `alarms` | permissions | Refreshes the due-highlight reminder count badge on a lightweight hourly schedule. |
+| `https://api.github.com/*` | host_permissions | Allows optional GitHub Sync requests to read/write a MarkBuddy JSON file in the user's configured GitHub repository. |
 | `<all_urls>` | content_scripts.matches | Runs the content script on webpages so saved highlights can be restored when the user returns. |
 | `commands` | manifest key | Defines keyboard shortcuts. This is not a permissions entry. |
 
@@ -94,7 +99,7 @@ Chinese (Simplified) / English
 
 **Does the extension collect user data?** No
 
-*(MarkBuddy stores all bookmarks and highlights locally. No data is sent to external servers.)*
+*(MarkBuddy stores all bookmarks and highlights locally by default. If the user enables GitHub Sync, MarkBuddy sends the synced JSON data file to the user's chosen GitHub repository through GitHub API. The developer does not receive this data.)*
 
 ### Data Use Certification
 - [x] Data is NOT sold to third parties
@@ -127,6 +132,7 @@ Chinese (Simplified) / English
 
 | Version | Date | Changes | Status |
 |---------|------|---------|--------|
+| 1.3.0 | 2026-07-05 | Adds optional GitHub repository sync for MarkBuddy JSON data, including manual upload/restore, token guidance, fixed sync path, and conflict detection. | Draft |
 | 1.2.0 | 2026-07-02 | Aligns the product around find-back reading workflows, adds Markdown export, JSON backup/restore, opt-in rediscovery reminders, due-count badges, light highlight recovery, and keyboard shortcuts. | Draft |
 | 1.1.0 | 2026-06-29 | Adds SM-2 review mode, SPA highlight restoration, sorting, slide-over settings, and custom confirmation dialogs. | Draft |
 | 1.0.0 | 2026-06-28 | Initial Release of MarkBuddy. | Superseded draft |
@@ -134,4 +140,4 @@ Chinese (Simplified) / English
 ## Review Notes
 
 ### Known Issues / Limitations
-- None.
+- GitHub Sync requires users to create a GitHub repository manually before syncing. MarkBuddy does not create repositories automatically because that would require broader token permissions.

@@ -11,12 +11,54 @@
 - 将重要高亮加入“唤醒收藏”，按 SM-2 节奏定时重温
 - 在扩展图标和网页浮动入口查看待重温数量徽标
 - 导出 Markdown，或用 JSON 备份/恢复本地数据
+- 可选 GitHub 仓库同步，用用户自己的仓库保存 JSON 数据文件并获得版本历史
 
 ## 唤醒收藏模型
 
 唤醒收藏以单条划线为对象。新划线默认不进入提醒队列，用户需要在侧边面板中手动把重要摘录设为“提醒我再看”。提醒状态保存到高亮对象的 `review.enabled`，SM-2 排期状态保存到 `review.sm2`，不再通过普通标签判断是否需要重温。
 
 SM-2 的 `interval` 按天计算：首次确认“仍然有用”后约 1 天再提醒，第二次约 6 天，后续按 ease factor 扩展。到期数量会同步显示在 Chrome 扩展图标徽标和网页浮动入口徽标上；后台使用 `chrome.alarms` 每小时刷新一次，并在开启/关闭提醒、删除划线、提交回顾反馈或修改设置后立即刷新。
+
+## GitHub 仓库同步
+
+GitHub 同步是可选功能。默认情况下 MarkBuddy 仍只把数据保存在本机；只有用户在设置页填写 GitHub Token、Owner、Repo 和分支后，点击“上传到 Git”或“从 Git 恢复”才会访问 GitHub API。
+
+同步文件固定写入用户仓库中的：
+
+```txt
+markbuddy/data.json
+```
+
+同步内容包括：
+
+- 网页收藏 `bookmarks`
+- 划线、高亮备注和唤醒收藏状态 `highlights`
+- 标签 `tags`
+- 普通设置 `settings`
+- 侧边栏展示偏好 `groupByDomain` / `sortBy`
+
+不会同步以下本机连接配置：
+
+- GitHub Token
+- GitHub owner/repo/branch 配置
+- 上次同步 sha、commit、时间等同步状态
+
+### 使用前准备
+
+1. 在 GitHub 上手动创建一个仓库，建议使用私有仓库。
+2. 创建 fine-grained personal access token。
+3. Token 只选择目标仓库，并授予 `Contents: Read and write` 权限。
+4. 在 MarkBuddy 设置页填写 Token、Owner、Repo 和分支。
+
+Repo 字段可以填写仓库名、`owner/repo`，也可以填写完整 GitHub URL，例如：
+
+```txt
+markbuddy-data
+zky-git/markbuddy-data
+https://github.com/zky-git/markbuddy-data
+```
+
+当前版本不会仅凭 Token 自动创建仓库。GitHub API 支持通过更高权限 token 创建仓库，但这需要 `Administration: write` 或 classic `repo` 权限；MarkBuddy 目前坚持最小权限原则，只要求用户手动创建仓库并提供 Contents 读写权限。
 
 ## 快速开始
 
@@ -41,6 +83,9 @@ SM-2 的 `interval` 按天计算：首次确认“仍然有用”后约 1 天再
 
 ```bash
 node tests/service-worker-review.test.js
+node tests/git-sync-service-worker.test.js
+node tests/github-provider.test.js
+node tests/git-sync-engine.test.js
 node tests/panel-structure.test.js
 node tests/backup-data.test.js
 node tests/export-markdown.test.js
@@ -63,8 +108,12 @@ mark-extension/
 │   ├── panel.html             # 侧边面板 HTML
 │   ├── panel.js               # 面板逻辑：列表渲染、搜索、过滤、唤醒收藏
 │   ├── panel.css              # 面板样式（深/浅色自适应）
+│   ├── git-sync.js            # GitHub 同步设置 UI
 │   ├── export-markdown.js     # Markdown 导出
 │   └── backup-data.js         # JSON 备份/恢复
+├── shared/
+│   ├── github-provider.js      # GitHub Contents API 封装
+│   └── git-sync-engine.js      # Git 同步 payload、push/pull 和冲突检测
 ├── icons/
 │   ├── icon-16.png
 │   ├── icon-48.png

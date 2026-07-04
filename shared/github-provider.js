@@ -15,12 +15,29 @@
     return trimString(path).replace(/^\/+/, '') || 'markbuddy/data.json';
   }
 
+  function parseRepositoryInput(owner, repo) {
+    const rawOwner = trimString(owner);
+    const rawRepo = trimString(repo).replace(/\.git$/, '');
+    const urlMatch = rawRepo.match(/^https?:\/\/github\.com\/([^/]+)\/([^/#?]+)(?:[/?#].*)?$/i);
+    if (urlMatch) {
+      return { owner: urlMatch[1], repo: urlMatch[2].replace(/\.git$/, '') };
+    }
+
+    const shorthandMatch = rawRepo.match(/^([^/\s]+)\/([^/\s]+)$/);
+    if (shorthandMatch) {
+      return { owner: shorthandMatch[1], repo: shorthandMatch[2].replace(/\.git$/, '') };
+    }
+
+    return { owner: rawOwner, repo: rawRepo };
+  }
+
   function normalizeGitHubConfig(config = {}) {
+    const repository = parseRepositoryInput(config.owner, config.repo);
     return {
       provider: 'github',
       token: trimString(config.token),
-      owner: trimString(config.owner),
-      repo: trimString(config.repo),
+      owner: repository.owner,
+      repo: repository.repo,
       branch: trimString(config.branch) || 'main',
       path: normalizePath(config.path),
     };

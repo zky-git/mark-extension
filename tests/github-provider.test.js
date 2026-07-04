@@ -34,6 +34,40 @@ function createJsonResponse(status, body) {
     path: 'markbuddy/data.json',
   });
 
+  assert.deepEqual(
+    normalizeGitHubConfig({
+      token: 'ghp_secret',
+      owner: '',
+      repo: 'https://github.com/zky-git/markbuddy',
+      branch: 'main',
+    }),
+    {
+      provider: 'github',
+      token: 'ghp_secret',
+      owner: 'zky-git',
+      repo: 'markbuddy',
+      branch: 'main',
+      path: 'markbuddy/data.json',
+    }
+  );
+
+  assert.deepEqual(
+    normalizeGitHubConfig({
+      token: 'ghp_secret',
+      owner: '',
+      repo: 'zky-git/markbuddy',
+      branch: 'main',
+    }),
+    {
+      provider: 'github',
+      token: 'ghp_secret',
+      owner: 'zky-git',
+      repo: 'markbuddy',
+      branch: 'main',
+      path: 'markbuddy/data.json',
+    }
+  );
+
   assert.equal(redactSecret('Token ghp_secret failed', 'ghp_secret'), 'Token [redacted] failed');
   assert.equal(mapGitHubError(401), 'GitHub Token 无效或已过期。');
   assert.equal(mapGitHubError(403), 'GitHub Token 权限不足，请确认已授予目标仓库 Contents 读写权限。');

@@ -50,6 +50,14 @@ assert.equal(payload.data.unrelatedCache, undefined);
 const parsed = parseBackupPayload(JSON.stringify(payload));
 assert.deepEqual(parsed.data, payload.data);
 
+const syncPayload = createBackupPayload(storageSnapshot, {
+  exportedAt,
+  sync: { schemaVersion: 1, source: 'git-sync' },
+});
+assert.deepEqual(syncPayload.sync, { schemaVersion: 1, source: 'git-sync' });
+const parsedSyncPayload = parseBackupPayload(JSON.stringify(syncPayload));
+assert.deepEqual(parsedSyncPayload.sync, syncPayload.sync);
+
 const sparseParsed = parseBackupPayload(JSON.stringify({
   app: 'MarkBuddy',
   version: 1,

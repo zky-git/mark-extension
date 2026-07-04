@@ -1,8 +1,18 @@
 // MarkBuddy — Service Worker (Manifest V3)
 // Handles: side panel opening, context menus, message routing, storage ops
 
+if (typeof importScripts === 'function') {
+  importScripts(
+    'shared/github-provider.js',
+    'shared/git-sync-engine.js',
+    'side-panel/backup-data.js'
+  );
+}
+
 // State to track open side panels per window
 const openSidePanels = new Map(); // windowId -> boolean
+const GIT_SYNC_CONFIG_KEY = 'gitSyncConfig';
+const GIT_SYNC_STATE_KEY = 'gitSyncState';
 
 // Track connection from side panel to monitor open/close state
 chrome.runtime.onConnect.addListener((port) => {
@@ -231,6 +241,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         case 'UPDATE_HIGHLIGHT_TAGS':
           sendResponse(await updateHighlightTags(message.payload.id, message.payload.tags));
           break;
+        case 'GIT_SYNC_GET_CONFIG':
+          sendResponse(await getGitSyncConfig());
+          break;
+        case 'GIT_SYNC_SAVE_CONFIG':
+          sendResponse(await saveGitSyncConfig(message.payload));
+          break;
+        case 'GIT_SYNC_CLEAR_CONFIG':
+          sendResponse(await clearGitSyncConfig());
+          break;
+        case 'GIT_SYNC_TEST':
+          sendResponse(await testGitSyncConnection());
+          break;
+        case 'GIT_SYNC_PUSH':
+          sendResponse(await pushGitSync(message.payload || {}));
+          break;
+        case 'GIT_SYNC_PULL':
+          sendResponse(await pullGitSync());
+          break;
+        case 'GIT_SYNC_STATUS':
+          sendResponse(await getGitSyncStatus());
+          break;
         case 'TOGGLE_SIDE_PANEL':
           sendResponse(await toggleSidePanelForTab(sender.tab));
           break;
@@ -254,6 +285,121 @@ async function getStorage(key) {
 
 async function setStorage(key, value) {
   await chrome.storage.local.set({ [key]: value });
+}
+
+function maskGitConfig(config = {}) {
+  return {
+    provider: config.provider || 'github',
+    token: config.token ? '********' : '',
+    hasToken: Boolean(config.token),
+    owner: config.owner || '',
+    repo: config.repo || '',
+    branch: config.branch || 'main',
+    path: config.path || 'markbuddy/data.json',
+  };
+}
+
+function getGitSyncEngine() {
+  if (!globalThis.MarkBuddyGitSyncEngine) {
+    throw new Error('Git 同步模块未加载，请刷新扩展后重试。');
+  }
+  return globalThis.MarkBuddyGitSyncEngine;
+}
+
+function getBackupModule() {
+  if (!globalThis.MarkBuddyBackup) {
+    throw new Error('备份模块未加载，请刷新扩展后重试。');
+  }
+  return globalThis.MarkBuddyBackup;
+}
+
+function createGitProvider() {
+  if (!globalThis.MarkBuddyGitHubProvider?.createGitHubProvider) {
+    throw new Error('GitHub 同步模块未加载，请刷新扩展后重试。');
+  }
+  return globalThis.MarkBuddyGitHubProvider.createGitHubProvider();
+}
+
+async function getRawGitSyncConfig() {
+  return (await getStorage(GIT_SYNC_CONFIG_KEY)) || {};
+}
+
+async function getRawGitSyncState() {
+  return (await getStorage(GIT_SYNC_STATE_KEY)) || {};
+}
+
+async function getGitSyncConfig() {
+  const config = await getRawGitSyncConfig();
+  return { success: true, config: maskGitConfig(config), state: await getRawGitSyncState() };
+}
+
+async function saveGitSyncConfig(payload = {}) {
+  const existing = await getRawGitSyncConfig();
+  const nextConfig = {
+    ...payload,
+    token: payload.token === '********' || payload.token === '' || payload.token === undefined
+      ? existing.token
+      : payload.token,
+  };
+  const config = getGitSyncEngine().sanitizeGitConfig(nextConfig);
+  await setStorage(GIT_SYNC_CONFIG_KEY, config);
+  return { success: true, config: maskGitConfig(config) };
+}
+
+async function clearGitSyncConfig() {
+  await chrome.storage.local.remove([GIT_SYNC_CONFIG_KEY, GIT_SYNC_STATE_KEY]);
+  return { success: true };
+}
+
+async function getGitSyncStatus() {
+  return {
+    success: true,
+    config: maskGitConfig(await getRawGitSyncConfig()),
+    state: await getRawGitSyncState(),
+  };
+}
+
+async function testGitSyncConnection() {
+  const config = await getRawGitSyncConfig();
+  const provider = createGitProvider();
+  const file = await provider.readFile(config);
+  return { success: true, exists: file.exists, remoteSha: file.sha || null };
+}
+
+async function pushGitSync(options = {}) {
+  const backup = getBackupModule();
+  const config = await getRawGitSyncConfig();
+  const state = await getRawGitSyncState();
+  const storageSnapshot = await chrome.storage.local.get(backup.BACKUP_KEYS);
+  const pushResult = await getGitSyncEngine().pushGitSync({
+    config,
+    state,
+    storageSnapshot,
+    backup,
+    provider: createGitProvider(),
+    force: Boolean(options.force),
+  });
+
+  if (pushResult.success && pushResult.state) {
+    await setStorage(GIT_SYNC_STATE_KEY, pushResult.state);
+  }
+  return pushResult;
+}
+
+async function pullGitSync() {
+  const backup = getBackupModule();
+  const pullResult = await getGitSyncEngine().pullGitSync({
+    config: await getRawGitSyncConfig(),
+    backup,
+    provider: createGitProvider(),
+  });
+
+  if (pullResult.success) {
+    await chrome.storage.local.set(pullResult.data);
+    await setStorage(GIT_SYNC_STATE_KEY, pullResult.state);
+    await refreshReviewBadge();
+  }
+  return pullResult;
 }
 
 async function saveBookmark({ url, title, favicon, tags = [] }) {

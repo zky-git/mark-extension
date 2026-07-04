@@ -398,6 +398,76 @@ body {
   color: var(--danger);
 }
 
+.git-sync-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.git-sync-field {
+  display: grid;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.git-sync-field-wide {
+  grid-column: 1 / -1;
+}
+
+.git-sync-field input {
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  padding: 0 8px;
+}
+
+.git-sync-field input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
+.git-sync-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.git-sync-btn {
+  min-height: 32px;
+  justify-content: center;
+}
+
+.git-sync-btn.danger {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
+}
+
+.git-sync-status {
+  min-height: 18px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+  margin-top: 6px;
+}
+
+.git-sync-status[data-tone="success"] {
+  color: var(--success);
+}
+
+.git-sync-status[data-tone="danger"] {
+  color: var(--danger);
+}
+
 .panel-notice {
   margin: 0 0 10px;
   padding: 9px 10px;

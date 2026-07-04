@@ -1493,5 +1493,12 @@
 
   // ─── Init ─────────────────────────────────────────────────────────────────────
 
+  window.MarkBuddyPanel = {
+    confirmAction: showCustomConfirm,
+    notice: showPanelNotice,
+    reload: loadAll,
+    sendMessage,
+  };
+
   loadAll();
 })();

@@ -35,12 +35,18 @@
       data[key] = cloneValue(value === undefined ? DEFAULT_DATA[key] : value);
     });
 
-    return {
+    const payload = {
       app: 'MarkBuddy',
       version: 1,
       exportedAt: new Date(options.exportedAt || Date.now()).toISOString(),
       data,
     };
+
+    if (isPlainObject(options.sync)) {
+      payload.sync = cloneValue(options.sync);
+    }
+
+    return payload;
   }
 
   function parseBackupPayload(text) {
@@ -80,12 +86,18 @@
       cleanData[key] = cloneValue(data[key] === undefined ? DEFAULT_DATA[key] : data[key]);
     });
 
-    return {
+    const parsed = {
       app: payload.app,
       version: payload.version,
       exportedAt: payload.exportedAt,
       data: cleanData,
     };
+
+    if (isPlainObject(payload.sync)) {
+      parsed.sync = cloneValue(payload.sync);
+    }
+
+    return parsed;
   }
 
   function buildBackupFilename(exportedAt = Date.now()) {

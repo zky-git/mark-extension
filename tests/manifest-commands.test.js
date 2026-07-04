@@ -32,4 +32,10 @@ assert.equal(
   'review badge reminders require the alarms permission'
 );
 
+assert.equal(
+  manifest.host_permissions.includes('https://api.github.com/*'),
+  true,
+  'GitHub sync requires GitHub API host permission'
+);
+
 console.log('manifest commands tests passed');

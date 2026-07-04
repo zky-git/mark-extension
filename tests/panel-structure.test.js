@@ -20,6 +20,17 @@ function assertContains(id) {
   'backup-export-btn',
   'backup-import-btn',
   'backup-file-input',
+  'git-sync-token-input',
+  'git-sync-owner-input',
+  'git-sync-repo-input',
+  'git-sync-branch-input',
+  'git-sync-path-input',
+  'git-sync-save-btn',
+  'git-sync-test-btn',
+  'git-sync-push-btn',
+  'git-sync-pull-btn',
+  'git-sync-clear-btn',
+  'git-sync-status',
   'review-start-btn',
   'review-mode',
   'review-jump-wrap',
@@ -32,6 +43,14 @@ function assertContains(id) {
 assert.match(html, /<option value="system">跟随系统<\/option>/, 'theme selector should default to a system option');
 assert.match(html, /<option value="light">浅色模式<\/option>/, 'theme selector should include light mode');
 assert.match(html, /<option value="dark">深色模式<\/option>/, 'theme selector should include dark mode');
+assert.match(html, /Git 仓库同步/, 'settings should include a Git sync section');
+assert.match(html, /Token 只保存在本机/, 'Git sync section should explain local token storage');
+assert.match(html, /<script src="git-sync\.js"><\/script>/, 'panel should load Git sync UI script');
+assert.match(panelJs, /window\.MarkBuddyPanel/, 'panel.js should expose a small helper API for Git sync UI');
+assert.match(panelJs, /confirmAction: showCustomConfirm/, 'Git sync UI should reuse the existing custom confirmation dialog');
+assert.match(panelJs, /reload: loadAll/, 'Git sync UI should be able to refresh the bookmark list after pull');
+assert.match(panelCss, /\.git-sync-grid/, 'panel.css should style Git sync form fields');
+assert.match(panelCss, /\.git-sync-actions/, 'panel.css should style Git sync actions');
 assert.match(html, /id="review-start-btn">看看这些<\/button>/, 'review banner button should invite lightweight rediscovery');
 assert.match(html, /class="review-banner-icon">🔔<\/span>/, 'review banner should use a reminder icon instead of a study icon');
 assert.match(html, /id="review-banner-text">今日重温 0 条<\/span>/, 'review banner should frame due items as rediscovery');

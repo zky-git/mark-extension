@@ -114,6 +114,43 @@
         </label>
       </div>
       <div class="settings-divider"></div>
+      <details class="settings-section git-sync-section" id="git-sync-section">
+        <summary class="settings-label git-sync-summary">Git 仓库同步</summary>
+        <div class="git-sync-body">
+          <p class="settings-help">把收藏、划线、标签和普通设置同步到你自己的 GitHub 仓库。Token 只保存在本机，不会写入同步文件。</p>
+          <div class="git-sync-grid">
+            <label class="git-sync-field">
+              <span>Token</span>
+              <input type="password" id="git-sync-token-input" autocomplete="off" placeholder="fine-grained token" />
+            </label>
+            <label class="git-sync-field">
+              <span>Owner</span>
+              <input type="text" id="git-sync-owner-input" autocomplete="off" placeholder="zky" />
+            </label>
+            <label class="git-sync-field">
+              <span>Repo</span>
+              <input type="text" id="git-sync-repo-input" autocomplete="off" placeholder="markbuddy-data" />
+            </label>
+            <label class="git-sync-field">
+              <span>分支</span>
+              <input type="text" id="git-sync-branch-input" autocomplete="off" value="main" />
+            </label>
+            <label class="git-sync-field git-sync-field-wide">
+              <span>文件路径</span>
+              <input type="text" id="git-sync-path-input" autocomplete="off" value="markbuddy/data.json" />
+            </label>
+          </div>
+          <div class="git-sync-actions">
+            <button class="btn-secondary git-sync-btn" id="git-sync-save-btn">保存配置</button>
+            <button class="btn-secondary git-sync-btn" id="git-sync-test-btn">测试连接</button>
+            <button class="btn-secondary git-sync-btn" id="git-sync-push-btn">上传到 Git</button>
+            <button class="btn-secondary git-sync-btn" id="git-sync-pull-btn">从 Git 恢复</button>
+            <button class="btn-secondary git-sync-btn danger" id="git-sync-clear-btn">清除配置</button>
+          </div>
+          <p class="git-sync-status" id="git-sync-status"></p>
+        </div>
+      </details>
+      <div class="settings-divider"></div>
       <div class="settings-section">
         <label class="settings-label">数据备份</label>
         <div class="backup-actions">
@@ -123,41 +160,6 @@
         </div>
         <p class="settings-help">完整备份用于恢复扩展数据；Markdown 导出用于带到笔记软件。</p>
         <p class="backup-status" id="backup-status"></p>
-      </div>
-      <div class="settings-divider"></div>
-      <div class="settings-section">
-        <label class="settings-label">Git 仓库同步</label>
-        <p class="settings-help">把收藏、划线、标签和普通设置同步到你自己的 GitHub 仓库。Token 只保存在本机，不会写入同步文件。</p>
-        <div class="git-sync-grid">
-          <label class="git-sync-field">
-            <span>Token</span>
-            <input type="password" id="git-sync-token-input" autocomplete="off" placeholder="fine-grained token" />
-          </label>
-          <label class="git-sync-field">
-            <span>Owner</span>
-            <input type="text" id="git-sync-owner-input" autocomplete="off" placeholder="zky" />
-          </label>
-          <label class="git-sync-field">
-            <span>Repo</span>
-            <input type="text" id="git-sync-repo-input" autocomplete="off" placeholder="markbuddy-data" />
-          </label>
-          <label class="git-sync-field">
-            <span>分支</span>
-            <input type="text" id="git-sync-branch-input" autocomplete="off" value="main" />
-          </label>
-          <label class="git-sync-field git-sync-field-wide">
-            <span>文件路径</span>
-            <input type="text" id="git-sync-path-input" autocomplete="off" value="markbuddy/data.json" />
-          </label>
-        </div>
-        <div class="git-sync-actions">
-          <button class="btn-secondary git-sync-btn" id="git-sync-save-btn">保存配置</button>
-          <button class="btn-secondary git-sync-btn" id="git-sync-test-btn">测试连接</button>
-          <button class="btn-secondary git-sync-btn" id="git-sync-push-btn">上传到 Git</button>
-          <button class="btn-secondary git-sync-btn" id="git-sync-pull-btn">从 Git 恢复</button>
-          <button class="btn-secondary git-sync-btn danger" id="git-sync-clear-btn">清除配置</button>
-        </div>
-        <p class="git-sync-status" id="git-sync-status"></p>
       </div>
     </div>
   </div>

@@ -264,11 +264,11 @@ body {
 
 .settings-label {
   display: block;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-transform: none;
+  letter-spacing: 0;
   margin-bottom: 8px;
 }
 
@@ -396,6 +396,24 @@ body {
 
 .backup-status[data-tone="danger"] {
   color: var(--danger);
+}
+
+.git-sync-section {
+  margin-bottom: 0;
+}
+
+.git-sync-summary {
+  cursor: pointer;
+  list-style-position: outside;
+  margin-bottom: 0;
+}
+
+.git-sync-section[open] .git-sync-summary {
+  margin-bottom: 8px;
+}
+
+.git-sync-body {
+  padding-top: 1px;
 }
 
 .git-sync-grid {

@@ -45,12 +45,23 @@ assert.match(html, /<option value="light">浅色模式<\/option>/, 'theme select
 assert.match(html, /<option value="dark">深色模式<\/option>/, 'theme selector should include dark mode');
 assert.match(html, /Git 仓库同步/, 'settings should include a Git sync section');
 assert.match(html, /Token 只保存在本机/, 'Git sync section should explain local token storage');
+assert.match(html, /<details class="settings-section git-sync-section" id="git-sync-section">/, 'Git sync settings should be collapsible');
+assert.match(html, /<summary class="settings-label git-sync-summary">Git 仓库同步<\/summary>/, 'Git sync summary should use the settings title styling');
+assert.ok(
+  html.indexOf('id="git-sync-section"') < html.indexOf('id="backup-export-btn"'),
+  'Git sync section should appear before data backup so backup stays at the bottom'
+);
 assert.match(html, /<script src="git-sync\.js"><\/script>/, 'panel should load Git sync UI script');
 assert.match(panelJs, /window\.MarkBuddyPanel/, 'panel.js should expose a small helper API for Git sync UI');
 assert.match(panelJs, /confirmAction: showCustomConfirm/, 'Git sync UI should reuse the existing custom confirmation dialog');
 assert.match(panelJs, /reload: loadAll/, 'Git sync UI should be able to refresh the bookmark list after pull');
 assert.match(panelCss, /\.git-sync-grid/, 'panel.css should style Git sync form fields');
 assert.match(panelCss, /\.git-sync-actions/, 'panel.css should style Git sync actions');
+const settingsLabelRuleMatch = panelCss.match(/\.settings-label\s*\{[^}]*\}/);
+assert.ok(settingsLabelRuleMatch, 'panel.css should style settings labels');
+assert.match(settingsLabelRuleMatch[0], /font-weight:\s*700/, 'settings labels should be bold');
+assert.match(settingsLabelRuleMatch[0], /color:\s*var\(--text-primary\)/, 'settings labels should use black primary text');
+assert.match(settingsLabelRuleMatch[0], /letter-spacing:\s*0/, 'settings labels should not use spaced-out text');
 assert.match(html, /id="review-start-btn">看看这些<\/button>/, 'review banner button should invite lightweight rediscovery');
 assert.match(html, /class="review-banner-icon">🔔<\/span>/, 'review banner should use a reminder icon instead of a study icon');
 assert.match(html, /id="review-banner-text">今日重温 0 条<\/span>/, 'review banner should frame due items as rediscovery');

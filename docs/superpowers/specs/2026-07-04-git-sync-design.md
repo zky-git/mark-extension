@@ -153,6 +153,8 @@ Token：用户个人访问令牌
 从 Git 恢复
 ```
 
+当已保存的 Git 配置处于可用状态时，列表面板顶部显示一个快捷同步图标。该图标不重新填写表单，直接使用本机保存的 Git 同步配置执行“上传到 Git”的同一套逻辑。
+
 可选展示状态：
 
 ```txt
@@ -257,14 +259,18 @@ GIT_SYNC_STATUS
 2. 读取远端 data.json。
 3. 读取本地 BACKUP_KEYS。
 4. 使用 createBackupPayload() 生成同步 payload。
-5. 如果远端不存在，创建文件。
-6. 如果远端存在且 sha 等于 lastRemoteSha，更新文件。
-7. 如果远端存在且 sha 不等于 lastRemoteSha，提示冲突，不自动覆盖。
-8. 成功后保存 lastRemoteSha、lastCommitSha、lastSyncAt、lastSyncDirection。
-9. UI 显示成功状态。
+5. 如果远端存在，解析远端 payload，并将 app/version/sync/data 与本地 payload 比较。
+6. 如果业务数据一致，仅更新本地同步状态并返回 noChange，不调用 GitHub 写入接口。
+7. 如果远端不存在，创建文件。
+8. 如果远端存在且 sha 等于 lastRemoteSha，更新文件。
+9. 如果远端存在且 sha 不等于 lastRemoteSha，提示冲突，不自动覆盖。
+10. 成功后保存 lastRemoteSha、lastCommitSha、lastSyncAt、lastSyncDirection。
+11. UI 显示成功状态。
 ```
 
 如果用户选择“用本机覆盖远端”，上传时允许使用最新远端 `sha` 强制更新文件，并在结果中标记这是一次覆盖操作。
+
+同步 payload 中的 `exportedAt` 是文件生成时间，不代表业务数据变化。无变化判断必须忽略 `exportedAt`，避免用户连续点击同步时产生只有时间戳不同的空提交。
 
 ## 恢复流程
 
@@ -360,7 +366,11 @@ Token       ********
 按钮行为：
 
 - 未保存配置时，测试/上传/恢复按钮禁用或显示明确错误。
+- 配置可用时，主列表顶部显示快捷同步图标；配置清除或不可用时隐藏。
 - 上传和恢复进行中时，按钮进入 loading 状态，避免重复提交。
+- 快捷同步进行中时，顶部同步图标进入旋转状态。
+- 快捷同步结果显示在顶部独立提示区，而不是插入收藏列表内容。
+- 顶部功能按钮使用自定义说明提示，不叠加浏览器原生 `title`。
 - 恢复前必须二次确认，因为会覆盖本地业务数据。
 - 冲突时使用现有确认弹窗风格，要求用户选择覆盖方向或取消。
 
@@ -374,11 +384,15 @@ Token       ********
 - 保存 Git 配置时 token 存在本机配置中，但不会进入业务 payload。
 - 上传新文件时调用 provider create/update，并保存远端 sha。
 - 上传已有文件时传入当前 remote sha。
+- 本地业务数据与远端一致时返回 `noChange`，不调用 provider write，不创建 Git commit。
+- 无变化判断忽略 `exportedAt`，只比较 `app`、`version`、`sync` 和 `data`。
 - 远端 sha 与 `lastRemoteSha` 不一致时返回冲突，而不是静默覆盖。
 - 从 Git 恢复时只写入业务数据，不覆盖 Git 同步配置。
 - GitHub 401/403/404/409 错误会转换成安全的中文错误。
 - `manifest.json` 包含 GitHub API host permission。
 - 设置页包含 Git 同步区域和必要按钮。
+- 配置可用时侧边面板顶部显示快捷同步按钮，按钮带自定义 tooltip。
+- 全局操作提示显示在 header 下方的独立提示区。
 
 ## 分阶段实施
 

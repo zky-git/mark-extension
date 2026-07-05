@@ -14,6 +14,7 @@ function assertContains(id) {
 }
 
 [
+  'git-sync-quick-btn',
   'export-toggle-btn',
   'export-dialog',
   'export-filtered-btn',
@@ -37,9 +38,35 @@ function assertContains(id) {
   'review-jump-wrap',
   'review-score-btns',
   'review-enabled-checkbox',
+  'panel-notice-host',
   'settings-panel',
   'theme-mode-select',
 ].forEach(assertContains);
+
+assert.ok(
+  html.indexOf('id="panel-notice-host"') > html.indexOf('<header class="header">') &&
+    html.indexOf('id="panel-notice-host"') < html.indexOf('id="settings-panel"'),
+  'global notices should render in a dedicated top host below the header'
+);
+assert.match(html, /class="icon-btn git-sync-quick-btn hidden"[\s\S]*?id="git-sync-quick-btn"/, 'quick Git sync button should be hidden until config is usable');
+assert.match(html, /id="git-sync-quick-btn"[\s\S]*?data-tooltip="同步数据到 Git 仓库"/, 'quick Git sync button should explain its action');
+assert.match(html, /id="export-toggle-btn"[\s\S]*?data-tooltip="导出收藏为 Markdown"/, 'export button should explain its action');
+assert.match(html, /id="settings-toggle-btn"[\s\S]*?data-tooltip="打开设置"/, 'settings button should explain its action');
+['git-sync-quick-btn', 'export-toggle-btn', 'settings-toggle-btn'].forEach(id => {
+  const buttonMatch = html.match(new RegExp(`<button\\b(?=[^>]*\\bid="${id}")[^>]*>`));
+  assert.ok(buttonMatch, `panel.html should contain #${id} button`);
+  assert.doesNotMatch(buttonMatch[0], /\btitle=/, `#${id} should not use native title when custom tooltip is present`);
+});
+assert.match(panelCss, /\.icon-btn\[data-tooltip\]::after/, 'icon buttons should render custom tooltip text');
+assert.match(panelCss, /\.icon-btn\[data-tooltip\]:hover::after/, 'icon button tooltips should appear on hover');
+assert.match(panelCss, /\.icon-btn\[data-tooltip\]:focus-visible::after/, 'icon button tooltips should appear on keyboard focus');
+assert.match(gitSyncJs, /function isGitSyncConfigUsable\(config = \{\}\)/, 'Git sync UI should centralize config usability checks');
+assert.match(gitSyncJs, /toggleQuickSync\(resp\.config\)/, 'Git sync UI should refresh the header sync button from stored status');
+assert.match(gitSyncJs, /bind\('git-sync-quick-btn', \(\) => quickSyncToGit\(false\)\)/, 'quick Git sync button should trigger the fast sync action');
+assert.match(gitSyncJs, /resp\.noChange/, 'quick Git sync should handle no-change sync results');
+assert.match(gitSyncJs, /本地数据未变化，无需同步。/, 'quick Git sync should explain when no commit is needed');
+assert.match(gitSyncJs, /panelApi\(\)\.notice\?\.\(`已同步到 Git/, 'quick Git sync should show a panel notice after a successful sync');
+assert.match(panelCss, /\.git-sync-quick-btn\.syncing/, 'panel.css should style the quick Git sync busy state');
 
 assert.match(html, /<option value="system">跟随系统<\/option>/, 'theme selector should default to a system option');
 assert.match(html, /<option value="light">浅色模式<\/option>/, 'theme selector should include light mode');
@@ -182,6 +209,12 @@ assert.match(
 );
 assert.match(panelJs, /function showPanelNotice\(message, tone = 'danger'\)/, 'panel.js should expose a reusable panel notice for navigation failures');
 assert.match(panelJs, /notice\.id = 'panel-notice'/, 'panel.js should render an in-panel notice when needed');
+assert.match(panelJs, /getElementById\('panel-notice-host'\)/, 'panel notices should use the dedicated top host outside settings');
+const showPanelNoticeMatch = panelJs.match(/function showPanelNotice\(message, tone = 'danger'\) \{[\s\S]*?\n  \}/);
+assert.ok(showPanelNoticeMatch, 'panel.js should define showPanelNotice');
+assert.doesNotMatch(showPanelNoticeMatch[0], /bookmark-list/, 'panel notices should not be inserted into the bookmark list');
+assert.match(panelCss, /\.panel-notice-host:empty\s*\{[^}]*display:\s*none/, 'empty notice host should not reserve space');
+assert.match(panelCss, /\.panel-notice-host\s*\{[^}]*padding:\s*10px 14px 0/, 'top notice host should align with panel content');
 assert.match(panelJs, /function openBookmarkUrl\(url\)/, 'panel.js should open bookmark URLs through a failure-aware helper');
 assert.match(panelJs, /无法打开网页，请检查链接是否有效。/, 'panel.js should show a clear message when a saved page cannot be opened');
 assert.match(panelJs, /title\.addEventListener\('click'[\s\S]*?e\.preventDefault\(\)[\s\S]*?openBookmarkUrl\(bm\.url\)/, 'bookmark title clicks should use the failure-aware opener instead of default anchor navigation');

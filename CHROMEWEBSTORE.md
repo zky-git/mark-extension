@@ -1,6 +1,6 @@
 # Chrome Web Store Listing — MarkBuddy
 
-> Last Updated: 2026-07-05
+> Last Updated: 2026-07-06
 
 ## Store Listing
 
@@ -24,7 +24,7 @@ FEATURES
 • Due Count Badges — See how many highlights are ready to revisit on the extension icon and floating page trigger.
 • Markdown Export — Export all, filtered, or single-page highlights to Markdown for note apps.
 • JSON Backup — Back up and restore local MarkBuddy data.
-• Optional GitHub Sync — Sync MarkBuddy data to a user-owned GitHub repository file for backup and version history.
+• Optional GitHub Sync — Sync MarkBuddy data to a user-owned GitHub repository file for backup and version history, with a quick sync button when configured.
 • Keyboard Shortcuts — Open the side panel or save the current selection quickly.
 • Domain Grouping — Group saved highlights and bookmarks by website domains for easier navigation.
 
@@ -36,7 +36,7 @@ HOW TO USE
 PRIVACY
 By default, all your data (bookmarks, highlights, notes, colors, reminder state, and settings) is stored locally on your device using Chrome's extension storage API. MarkBuddy does not collect, transmit, or share your personal data or browsing history with the developer or third-party analytics services.
 
-If you explicitly configure GitHub Sync, MarkBuddy sends the selected MarkBuddy data file to GitHub API using your own token and your chosen repository. The GitHub token and repository connection settings stay in local extension storage and are not written into the synced data file.
+If you explicitly configure GitHub Sync, MarkBuddy sends the selected MarkBuddy data file to GitHub API using your own token and your chosen repository. The GitHub token and repository connection settings stay in local extension storage and are not written into the synced data file. MarkBuddy skips GitHub writes when the synced business data has not changed, avoiding empty commits caused only by export timestamps.
 
 PERMISSIONS
 • "sidePanel" — Needed to display the side panel where you organize highlights.
@@ -132,7 +132,7 @@ Chinese (Simplified) / English
 
 | Version | Date | Changes | Status |
 |---------|------|---------|--------|
-| 1.3.0 | 2026-07-05 | Adds optional GitHub repository sync for MarkBuddy JSON data, including manual upload/restore, token guidance, fixed sync path, and conflict detection. | Draft |
+| 1.3.0 | 2026-07-06 | Adds optional GitHub repository sync for MarkBuddy JSON data, including manual upload/restore, quick sync, token guidance, fixed sync path, no-change commit skipping, top-level sync notices, and conflict detection. | Draft |
 | 1.2.0 | 2026-07-02 | Aligns the product around find-back reading workflows, adds Markdown export, JSON backup/restore, opt-in rediscovery reminders, due-count badges, light highlight recovery, and keyboard shortcuts. | Draft |
 | 1.1.0 | 2026-06-29 | Adds SM-2 review mode, SPA highlight restoration, sorting, slide-over settings, and custom confirmation dialogs. | Draft |
 | 1.0.0 | 2026-06-28 | Initial Release of MarkBuddy. | Superseded draft |

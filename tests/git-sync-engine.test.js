@@ -93,6 +93,31 @@ const storageSnapshot = {
   });
   assert.equal(pushUpdate.state.lastRemoteSha, 'remote-sha-2');
 
+  const sameRemotePayload = backup.createBackupPayload(storageSnapshot, {
+    exportedAt: exportedAt - 1000,
+    sync: { schemaVersion: 1, source: 'git-sync' },
+  });
+  const pushNoChange = await pushGitSync({
+    config,
+    state: { lastRemoteSha: 'remote-sha-1', lastCommitSha: 'commit-sha-1' },
+    storageSnapshot,
+    backup,
+    provider: {
+      async readFile() {
+        return { exists: true, sha: 'remote-sha-1', content: JSON.stringify(sameRemotePayload) };
+      },
+      async writeFile() {
+        throw new Error('should not write when sync payload data has not changed');
+      },
+    },
+    now: exportedAt,
+  });
+  assert.equal(pushNoChange.success, true);
+  assert.equal(pushNoChange.noChange, true);
+  assert.equal(pushNoChange.commitSha, null);
+  assert.equal(pushNoChange.state.lastRemoteSha, 'remote-sha-1');
+  assert.equal(pushNoChange.state.lastCommitSha, 'commit-sha-1');
+
   const conflict = await pushGitSync({
     config,
     state: { lastRemoteSha: 'remote-sha-1' },

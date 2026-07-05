@@ -27,6 +27,7 @@
 
   function setBusy(isBusy) {
     [
+      'git-sync-quick-btn',
       'git-sync-save-btn',
       'git-sync-test-btn',
       'git-sync-push-btn',
@@ -36,6 +37,18 @@
       const btn = $(id);
       if (btn) btn.disabled = isBusy;
     });
+    const quickBtn = $('git-sync-quick-btn');
+    if (quickBtn) quickBtn.classList.toggle('syncing', isBusy);
+  }
+
+  function isGitSyncConfigUsable(config = {}) {
+    return Boolean(config.hasToken && config.owner && config.repo && config.branch && config.path);
+  }
+
+  function toggleQuickSync(config = {}) {
+    const quickBtn = $('git-sync-quick-btn');
+    if (!quickBtn) return;
+    quickBtn.classList.toggle('hidden', !isGitSyncConfigUsable(config));
   }
 
   function getFormConfig() {
@@ -85,10 +98,12 @@
   async function refreshStatus(message) {
     const resp = await send('GIT_SYNC_STATUS');
     if (!resp?.success) {
+      toggleQuickSync({});
       setStatus(message || resp?.error || 'Git 同步状态读取失败。', 'danger');
       return;
     }
     applyConfig(resp.config);
+    toggleQuickSync(resp.config);
     setStatus(message || describeState(resp.state) || 'Git 同步未配置。', message ? 'success' : 'muted');
   }
 
@@ -99,6 +114,7 @@
       return false;
     }
     applyConfig(resp.config);
+    toggleQuickSync(resp.config);
     setStatus('Git 同步配置已保存。', 'success');
     return true;
   }
@@ -113,8 +129,7 @@
     setStatus(resp.exists ? '连接成功，已找到远端同步文件。' : '连接成功，远端同步文件尚未创建。', 'success');
   }
 
-  async function pushToGit(force = false) {
-    if (!(await saveConfig())) return;
+  async function pushStoredConfigToGit(force = false) {
     const resp = await send('GIT_SYNC_PUSH', { force });
     if (resp?.conflict) {
       const ok = await panelApi().confirmAction?.(
@@ -122,17 +137,45 @@
         '同步冲突'
       );
       if (ok) {
-        await pushToGit(true);
+        return pushStoredConfigToGit(true);
       } else {
         setStatus('已取消上传，请先从 Git 恢复或手动处理冲突。', 'danger');
       }
-      return;
+      return null;
     }
     if (!resp?.success) {
       setStatus(resp?.error || '上传到 Git 失败。', 'danger');
-      return;
+      return null;
+    }
+    if (resp.noChange) {
+      setStatus('本地数据未变化，无需创建新提交。', 'success');
+      return resp;
     }
     setStatus(`已上传到 Git${resp.commitSha ? `，commit ${resp.commitSha.slice(0, 7)}` : ''}。`, 'success');
+    return resp;
+  }
+
+  async function pushToGit(force = false) {
+    if (!(await saveConfig())) return;
+    await pushStoredConfigToGit(force);
+  }
+
+  async function quickSyncToGit(force = false) {
+    const status = await send('GIT_SYNC_STATUS');
+    if (!status?.success || !isGitSyncConfigUsable(status.config)) {
+      toggleQuickSync({});
+      panelApi().notice?.('Git 同步配置不可用，请先在设置里保存并测试连接。');
+      return;
+    }
+    toggleQuickSync(status.config);
+    const resp = await pushStoredConfigToGit(force);
+    if (resp?.noChange) {
+      panelApi().notice?.('本地数据未变化，无需同步。', 'success');
+    } else if (resp?.success) {
+      panelApi().notice?.(`已同步到 Git${resp.commitSha ? `，commit ${resp.commitSha.slice(0, 7)}` : ''}。`, 'success');
+    } else {
+      panelApi().notice?.('同步到 Git 失败，请打开设置查看详情。');
+    }
   }
 
   async function pullFromGit() {
@@ -164,6 +207,7 @@
       return;
     }
     applyConfig({});
+    toggleQuickSync({});
     setStatus('Git 同步配置已清除。', 'success');
   }
 
@@ -187,6 +231,7 @@
   bind('git-sync-push-btn', () => pushToGit(false));
   bind('git-sync-pull-btn', pullFromGit);
   bind('git-sync-clear-btn', clearConfig);
+  bind('git-sync-quick-btn', () => quickSyncToGit(false));
 
   refreshStatus();
 })();

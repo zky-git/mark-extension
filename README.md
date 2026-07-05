@@ -21,7 +21,9 @@ SM-2 的 `interval` 按天计算：首次确认“仍然有用”后约 1 天再
 
 ## GitHub 仓库同步
 
-GitHub 同步是可选功能。默认情况下 MarkBuddy 仍只把数据保存在本机；只有用户在设置页填写 GitHub Token、Owner、Repo 和分支后，点击“上传到 Git”或“从 Git 恢复”才会访问 GitHub API。
+GitHub 同步是可选功能。默认情况下 MarkBuddy 仍只把数据保存在本机；只有用户在设置页填写 GitHub Token、Owner、Repo 和分支后，点击“上传到 Git”“从 Git 恢复”或顶部快捷同步按钮才会访问 GitHub API。
+
+保存可用配置后，侧边面板顶部会显示一个同步图标，方便从收藏列表快速上传当前数据。同步结果会显示在顶部独立提示区；如果本地业务数据没有变化，MarkBuddy 会跳过 GitHub 写入并提示“本地数据未变化，无需同步”，不会因为同步文件里的导出时间变化而创建空提交。
 
 同步文件固定写入用户仓库中的：
 
@@ -59,6 +61,15 @@ https://github.com/zky-git/markbuddy-data
 ```
 
 当前版本不会仅凭 Token 自动创建仓库。GitHub API 支持通过更高权限 token 创建仓库，但这需要 `Administration: write` 或 classic `repo` 权限；MarkBuddy 目前坚持最小权限原则，只要求用户手动创建仓库并提供 Contents 读写权限。
+
+### 同步行为细节
+
+- “上传到 Git”和顶部快捷同步共用同一套上传逻辑。
+- 上传前会读取远端 `markbuddy/data.json`，并与本地将要生成的业务数据比较。
+- 比较时只看 `app`、`version`、`sync` 和 `data`，忽略 `exportedAt` 这类导出时间元数据。
+- 只有业务数据变化时才写入 GitHub 并创建 commit。
+- 远端文件被其他设备修改时会提示冲突，用户可以选择覆盖或取消。
+- 从 Git 恢复会覆盖本地业务数据，但不会覆盖本机 Git 同步配置。
 
 ## 快速开始
 

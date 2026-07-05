@@ -20,18 +20,28 @@
       </div>
     </div>
     <div class="header-actions">
-      <button class="icon-btn" id="export-toggle-btn" title="导出 Markdown" aria-label="导出 Markdown">
+      <button class="icon-btn git-sync-quick-btn hidden" id="git-sync-quick-btn" aria-label="同步到 Git" data-tooltip="同步数据到 Git 仓库">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
+          <path d="M21 12a9 9 0 0 1-15.4 6.4L3 16"></path>
+          <path d="M3 21v-5h5"></path>
+          <path d="M3 12a9 9 0 0 1 15.4-6.4L21 8"></path>
+          <path d="M21 3v5h-5"></path>
+        </svg>
+      </button>
+      <button class="icon-btn" id="export-toggle-btn" aria-label="导出 Markdown" data-tooltip="导出收藏为 Markdown">
         <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
           <polyline points="7 10 12 15 17 10"></polyline>
           <line x1="12" y1="15" x2="12" y2="3"></line>
         </svg>
       </button>
-      <button class="icon-btn" id="settings-toggle-btn" title="设置" aria-label="打开设置">
+      <button class="icon-btn" id="settings-toggle-btn" aria-label="打开设置" data-tooltip="打开设置">
         ⚙️
       </button>
     </div>
   </header>
+
+  <div class="panel-notice-host" id="panel-notice-host"></div>
 
   <!-- Settings Panel (hidden by default) -->
   <div class="settings-panel hidden" id="settings-panel" role="region" aria-label="设置面板">

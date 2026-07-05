@@ -66,12 +66,12 @@
   }
 
   function showPanelNotice(message, tone = 'danger') {
-    const list = document.getElementById('bookmark-list');
+    const noticeHost = document.getElementById('panel-notice-host');
     const settingsPanel = document.getElementById('settings-panel');
     const settingsBody = settingsPanel?.querySelector('.settings-body');
     const target = settingsPanel && !settingsPanel.classList.contains('hidden') && settingsBody
       ? settingsBody
-      : list;
+      : noticeHost;
     if (!target) return;
 
     let notice = document.getElementById('panel-notice');
@@ -90,7 +90,7 @@
 
     clearTimeout(panelNoticeTimer);
     panelNoticeTimer = setTimeout(() => {
-      notice.classList.add('hidden');
+      notice.remove();
     }, 3200);
   }
 

@@ -55,6 +55,35 @@
     };
   }
 
+  function stableStringify(value) {
+    if (Array.isArray(value)) {
+      return `[${value.map(stableStringify).join(',')}]`;
+    }
+    if (value && typeof value === 'object') {
+      return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(',')}}`;
+    }
+    return JSON.stringify(value);
+  }
+
+  function getComparablePayload(payload = {}) {
+    return {
+      app: payload.app,
+      version: payload.version,
+      sync: payload.sync || null,
+      data: payload.data || {},
+    };
+  }
+
+  function hasSameSyncContent(remoteContent, nextPayload, backup) {
+    if (!remoteContent || !backup?.parseBackupPayload) return false;
+    try {
+      const remotePayload = backup.parseBackupPayload(remoteContent);
+      return stableStringify(getComparablePayload(remotePayload)) === stableStringify(getComparablePayload(nextPayload));
+    } catch {
+      return false;
+    }
+  }
+
   async function pushGitSync(options = {}) {
     const config = validateGitConfig(options.config);
     const state = options.state || {};
@@ -82,6 +111,17 @@
       backup: options.backup,
       exportedAt: options.now,
     });
+    if (remote.exists && hasSameSyncContent(remote.content, payload, options.backup)) {
+      return {
+        success: true,
+        noChange: true,
+        payload,
+        state: createStateUpdate('push', remote.sha, state.lastCommitSha, options.now),
+        commitSha: null,
+        remoteSha: remote.sha,
+      };
+    }
+
     const writeResult = await provider.writeFile(config, {
       content: `${JSON.stringify(payload, null, 2)}\n`,
       message: buildSyncMessage(payload),

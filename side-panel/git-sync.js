@@ -82,11 +82,18 @@
   }
 
   function describeState(state = {}) {
+    if (!state.lastSyncAt || !state.lastCommitSha) return '';
     const time = formatSyncTime(state.lastSyncAt);
     if (!time) return '';
-    const direction = state.lastSyncDirection === 'pull' ? '恢复' : '上传';
-    const commit = state.lastCommitSha ? `，commit ${state.lastCommitSha.slice(0, 7)}` : '';
-    return `上次${direction} ${time}${commit}`;
+    return `最近同步时间 ${time}，Commit为 ${state.lastCommitSha.slice(0, 7)}`;
+  }
+
+  function updateLastSuccessMeta(state = {}) {
+    const meta = $('git-sync-last-success');
+    if (!meta) return;
+    const text = describeState(state);
+    meta.textContent = text;
+    meta.classList.toggle('hidden', !text);
   }
 
   async function send(type, payload) {
@@ -104,6 +111,7 @@
     }
     applyConfig(resp.config);
     toggleQuickSync(resp.config);
+    updateLastSuccessMeta(resp.state);
     setStatus(message || describeState(resp.state) || 'Git 同步未配置。', message ? 'success' : 'muted');
   }
 
@@ -148,9 +156,11 @@
       return null;
     }
     if (resp.noChange) {
+      updateLastSuccessMeta(resp.state);
       setStatus('本地数据未变化，无需创建新提交。', 'success');
       return resp;
     }
+    updateLastSuccessMeta(resp.state);
     setStatus(`已上传到 Git${resp.commitSha ? `，commit ${resp.commitSha.slice(0, 7)}` : ''}。`, 'success');
     return resp;
   }
@@ -195,6 +205,7 @@
       return;
     }
     await panelApi().reload?.();
+    updateLastSuccessMeta(resp.state);
     setStatus('已从 Git 恢复，列表已刷新。', 'success');
   }
 
@@ -208,6 +219,7 @@
     }
     applyConfig({});
     toggleQuickSync({});
+    updateLastSuccessMeta({});
     setStatus('Git 同步配置已清除。', 'success');
   }
 

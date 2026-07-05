@@ -93,6 +93,22 @@
     }
 
     const remote = await provider.readFile(config);
+    const payload = createSyncPayload(options.storageSnapshot, {
+      backup: options.backup,
+      exportedAt: options.now,
+    });
+    const hasSameContent = remote.exists && hasSameSyncContent(remote.content, payload, options.backup);
+    if (hasSameContent) {
+      return {
+        success: true,
+        noChange: true,
+        payload,
+        state: createStateUpdate('push', remote.sha, state.lastCommitSha, options.now),
+        commitSha: null,
+        remoteSha: remote.sha,
+      };
+    }
+
     if (
       remote.exists &&
       state.lastRemoteSha &&
@@ -103,21 +119,6 @@
         success: false,
         conflict: true,
         error: '远端数据已变化，请选择覆盖方向。',
-        remoteSha: remote.sha,
-      };
-    }
-
-    const payload = createSyncPayload(options.storageSnapshot, {
-      backup: options.backup,
-      exportedAt: options.now,
-    });
-    if (remote.exists && hasSameSyncContent(remote.content, payload, options.backup)) {
-      return {
-        success: true,
-        noChange: true,
-        payload,
-        state: createStateUpdate('push', remote.sha, state.lastCommitSha, options.now),
-        commitSha: null,
         remoteSha: remote.sha,
       };
     }

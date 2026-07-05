@@ -32,6 +32,7 @@ function assertContains(id) {
   'git-sync-push-btn',
   'git-sync-pull-btn',
   'git-sync-clear-btn',
+  'git-sync-last-success',
   'git-sync-status',
   'review-start-btn',
   'review-mode',
@@ -61,6 +62,9 @@ assert.match(panelCss, /\.icon-btn\[data-tooltip\]::after/, 'icon buttons should
 assert.match(panelCss, /\.icon-btn\[data-tooltip\]:hover::after/, 'icon button tooltips should appear on hover');
 assert.match(panelCss, /\.icon-btn\[data-tooltip\]:focus-visible::after/, 'icon button tooltips should appear on keyboard focus');
 assert.match(gitSyncJs, /function isGitSyncConfigUsable\(config = \{\}\)/, 'Git sync UI should centralize config usability checks');
+assert.match(gitSyncJs, /function updateLastSuccessMeta\(state = \{\}\)/, 'Git sync UI should update the last successful sync summary separately from operation status');
+assert.match(gitSyncJs, /state\.lastSyncAt[\s\S]*state\.lastCommitSha/, 'Git sync summary should require both a successful sync time and commit sha');
+assert.match(gitSyncJs, /Commit为 \$\{state\.lastCommitSha\.slice\(0, 7\)\}/, 'Git sync summary should label the commit as Commit');
 assert.match(gitSyncJs, /toggleQuickSync\(resp\.config\)/, 'Git sync UI should refresh the header sync button from stored status');
 assert.match(gitSyncJs, /bind\('git-sync-quick-btn', \(\) => quickSyncToGit\(false\)\)/, 'quick Git sync button should trigger the fast sync action');
 assert.match(gitSyncJs, /resp\.noChange/, 'quick Git sync should handle no-change sync results');
@@ -76,7 +80,11 @@ assert.match(html, /Token 只保存在本机/, 'Git sync section should explain 
 assert.match(html, /<details class="settings-section git-sync-section" id="git-sync-section">/, 'Git sync settings should be collapsible');
 assert.match(html, /<summary class="git-sync-summary">/, 'Git sync summary should wrap the always-visible header content');
 assert.match(html, /<span class="settings-label git-sync-title">Git 仓库同步<\/span>/, 'Git sync title should use the settings title styling');
+assert.match(html, /<span class="git-sync-last-success hidden" id="git-sync-last-success" aria-live="polite"><\/span>/, 'Git sync summary should reserve a hidden slot for the last successful sync');
 assert.match(html, /<span class="git-sync-chevron" aria-hidden="true">/, 'Git sync summary should show a right-side collapse indicator');
+const gitSyncLastSuccessRuleMatch = panelCss.match(/\.git-sync-last-success\s*\{[^}]*\}/);
+assert.ok(gitSyncLastSuccessRuleMatch, 'panel.css should style the last successful Git sync text');
+assert.match(gitSyncLastSuccessRuleMatch[0], /color:\s*var\(--success\)/, 'last successful Git sync text should use the success green');
 assert.match(html, /<span class="git-sync-token-label">[\s\S]*?Token[\s\S]*?git-sync-token-tip/, 'Token field should include a help tip');
 assert.match(html, /Settings > Developer settings > Personal access tokens > Fine-grained tokens/, 'Token tip should explain where to create a fine-grained token');
 assert.match(html, /Contents: Read and write/, 'Token tip should mention the required Contents permission');

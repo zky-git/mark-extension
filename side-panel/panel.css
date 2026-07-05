@@ -466,8 +466,26 @@ body {
   gap: 8px;
 }
 
+.git-sync-title-main {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
 .git-sync-title {
+  flex-shrink: 0;
   margin-bottom: 0;
+}
+
+.git-sync-last-success {
+  min-width: 0;
+  color: var(--success);
+  font-size: 11px;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .git-sync-summary .settings-help {

@@ -57,4 +57,10 @@ assert.match(
   'doSaveHighlight should stop before applying DOM highlights when the selected range is oversized'
 );
 
+assert.match(
+  contentJs,
+  /message\.type === 'MARKBUDDY_DATA_CHANGED'/,
+  'content script should refresh from runtime messages when storage access is restricted to trusted contexts'
+);
+
 console.log('content highlight DOM tests passed');

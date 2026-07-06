@@ -69,6 +69,28 @@
     });
   }
 
+  async function refreshFromDataChanged(keys = []) {
+    if (keys.includes('settings')) {
+      const nextSettings = await sendMessage('GET_SETTINGS', {});
+      if (nextSettings) {
+        settings = nextSettings;
+        selectedColor = settings.defaultColor;
+        if (toolbar) {
+          createToolbar();
+        }
+      }
+      refreshSidebarTriggerBadge();
+    }
+
+    if (keys.includes('highlights')) {
+      const url = window.location.href;
+      const highlights = await sendMessage('GET_HIGHLIGHTS_FOR_URL', { url });
+      pageHighlights = highlights || [];
+      updateHighlightDOMNotes();
+      refreshSidebarTriggerBadge();
+    }
+  }
+
   // ─── XPath Serialization ──────────────────────────────────────────────────────
 
   function getClosestStableAncestor(node) {
@@ -940,6 +962,9 @@
       sendResponse({ success: true });
     } else if (message.type === 'REVIEW_BADGE_UPDATED') {
       updateSidebarTriggerBadge(message.count);
+      sendResponse({ success: true });
+    } else if (message.type === 'MARKBUDDY_DATA_CHANGED') {
+      refreshFromDataChanged(message.keys || []);
       sendResponse({ success: true });
     }
   });

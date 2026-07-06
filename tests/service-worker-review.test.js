@@ -184,7 +184,10 @@ vm.runInNewContext(source, context, { filename: 'service-worker.js' });
   assert.equal(storageData.highlights.legacyTagOnly.review.enabled, true);
   assert.equal(storageData.highlights.legacyTagOnly.tags.includes('学习'), true);
   assert.equal(context.chrome._badgeUpdates.at(-2).update.text, '2');
-  assert.equal(context.chrome._tabMessages.at(-1).message.count, 2);
+  assert.equal(
+    context.chrome._tabMessages.filter(item => item.message.type === 'REVIEW_BADGE_UPDATED').at(-1).message.count,
+    2
+  );
 
   const beforeReview = Date.now();
   await context.updateReviewResult('legacyTagOnly', 5);

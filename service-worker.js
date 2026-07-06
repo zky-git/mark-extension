@@ -13,6 +13,26 @@ if (typeof importScripts === 'function') {
 const openSidePanels = new Map(); // windowId -> boolean
 const GIT_SYNC_CONFIG_KEY = 'gitSyncConfig';
 const GIT_SYNC_STATE_KEY = 'gitSyncState';
+let storageWriteQueue = Promise.resolve();
+
+configureStorageAccess();
+
+function configureStorageAccess() {
+  try {
+    const result = chrome.storage?.local?.setAccessLevel?.({ accessLevel: 'TRUSTED_CONTEXTS' });
+    if (result?.catch) {
+      result.catch(err => console.warn('[MarkBuddy SW] Failed to restrict storage access:', err));
+    }
+  } catch (err) {
+    console.warn('[MarkBuddy SW] Failed to restrict storage access:', err);
+  }
+}
+
+function withStorageWriteLock(operation) {
+  const run = storageWriteQueue.then(operation, operation);
+  storageWriteQueue = run.catch(() => {});
+  return run;
+}
 
 // Track connection from side panel to monitor open/close state
 chrome.runtime.onConnect.addListener((port) => {
@@ -83,6 +103,7 @@ const REVIEW_BADGE_ALARM_NAME = 'markbuddy-review-badge-refresh';
 const REVIEW_BADGE_REFRESH_MINUTES = 60;
 const REVIEW_BADGE_COLOR = '#ef4444';
 const REVIEW_BADGE_UPDATE_MESSAGE = 'REVIEW_BADGE_UPDATED';
+const DATA_CHANGED_MESSAGE = 'MARKBUDDY_DATA_CHANGED';
 
 function canMessageContentTab(tab) {
   return Boolean(tab?.id && /^https?:\/\//.test(tab.url || ''));
@@ -120,6 +141,20 @@ async function broadcastReviewBadgeCount(count) {
       { type: REVIEW_BADGE_UPDATE_MESSAGE, count },
       () => {
         // Accessing lastError clears missing-content-script errors for restricted pages.
+        chrome.runtime.lastError;
+        resolve();
+      }
+    );
+  })));
+}
+
+async function broadcastDataChanged(keys) {
+  const tabs = await chrome.tabs.query({});
+  await Promise.all(tabs.filter(canMessageContentTab).map(tab => new Promise((resolve) => {
+    chrome.tabs.sendMessage(
+      tab.id,
+      { type: DATA_CHANGED_MESSAGE, keys },
+      () => {
         chrome.runtime.lastError;
         resolve();
       }
@@ -334,6 +369,10 @@ async function getGitSyncConfig() {
 }
 
 async function saveGitSyncConfig(payload = {}) {
+  return withStorageWriteLock(() => saveGitSyncConfigUnlocked(payload));
+}
+
+async function saveGitSyncConfigUnlocked(payload = {}) {
   const existing = await getRawGitSyncConfig();
   const nextConfig = {
     ...payload,
@@ -347,6 +386,10 @@ async function saveGitSyncConfig(payload = {}) {
 }
 
 async function clearGitSyncConfig() {
+  return withStorageWriteLock(clearGitSyncConfigUnlocked);
+}
+
+async function clearGitSyncConfigUnlocked() {
   await chrome.storage.local.remove([GIT_SYNC_CONFIG_KEY, GIT_SYNC_STATE_KEY]);
   return { success: true };
 }
@@ -367,6 +410,10 @@ async function testGitSyncConnection() {
 }
 
 async function pushGitSync(options = {}) {
+  return withStorageWriteLock(() => pushGitSyncUnlocked(options));
+}
+
+async function pushGitSyncUnlocked(options = {}) {
   const backup = getBackupModule();
   const config = await getRawGitSyncConfig();
   const state = await getRawGitSyncState();
@@ -387,6 +434,10 @@ async function pushGitSync(options = {}) {
 }
 
 async function pullGitSync() {
+  return withStorageWriteLock(pullGitSyncUnlocked);
+}
+
+async function pullGitSyncUnlocked() {
   const backup = getBackupModule();
   const pullResult = await getGitSyncEngine().pullGitSync({
     config: await getRawGitSyncConfig(),
@@ -398,11 +449,16 @@ async function pullGitSync() {
     await chrome.storage.local.set(pullResult.data);
     await setStorage(GIT_SYNC_STATE_KEY, pullResult.state);
     await refreshReviewBadge();
+    await broadcastDataChanged(Object.keys(pullResult.data || {}));
   }
   return pullResult;
 }
 
 async function saveBookmark({ url, title, favicon, tags = [] }) {
+  return withStorageWriteLock(() => saveBookmarkUnlocked({ url, title, favicon, tags }));
+}
+
+async function saveBookmarkUnlocked({ url, title, favicon, tags = [] }) {
   const bookmarks = (await getStorage('bookmarks')) || {};
 
   if (!bookmarks[url]) {
@@ -423,10 +479,15 @@ async function saveBookmark({ url, title, favicon, tags = [] }) {
 
   await setStorage('bookmarks', bookmarks);
   await syncTags(bookmarks);
+  await broadcastDataChanged(['bookmarks', 'tags']);
   return { success: true, bookmark: bookmarks[url] };
 }
 
 async function saveHighlight({ url, text, color, serializedRange, pageTitle, pageFavicon }) {
+  return withStorageWriteLock(() => saveHighlightUnlocked({ url, text, color, serializedRange, pageTitle, pageFavicon }));
+}
+
+async function saveHighlightUnlocked({ url, text, color, serializedRange, pageTitle, pageFavicon }) {
   const highlights = (await getStorage('highlights')) || {};
   const bookmarks = (await getStorage('bookmarks')) || {};
 
@@ -446,25 +507,31 @@ async function saveHighlight({ url, text, color, serializedRange, pageTitle, pag
 
   // Auto-bookmark the page when saving a highlight
   if (!bookmarks[url]) {
-    await saveBookmark({
+    bookmarks[url] = {
       url,
       title: pageTitle || url,
       favicon: pageFavicon || '',
+      savedAt: Date.now(),
       tags: [],
-    });
-    const freshBookmarks = (await getStorage('bookmarks')) || {};
-    freshBookmarks[url].highlightIds = [id];
-    await setStorage('bookmarks', freshBookmarks);
+      highlightIds: [id],
+    };
+    await setStorage('bookmarks', bookmarks);
+    await syncTags(bookmarks);
   } else {
     if (!bookmarks[url].highlightIds) bookmarks[url].highlightIds = [];
     bookmarks[url].highlightIds.push(id);
     await setStorage('bookmarks', bookmarks);
   }
 
+  await broadcastDataChanged(['bookmarks', 'highlights', 'tags']);
   return { success: true, highlight: highlights[id] };
 }
 
 async function deleteBookmark(url) {
+  return withStorageWriteLock(() => deleteBookmarkUnlocked(url));
+}
+
+async function deleteBookmarkUnlocked(url) {
   const bookmarks = (await getStorage('bookmarks')) || {};
   const highlights = (await getStorage('highlights')) || {};
 
@@ -477,12 +544,17 @@ async function deleteBookmark(url) {
     await setStorage('bookmarks', bookmarks);
     await syncTags(bookmarks);
     await refreshReviewBadge();
+    await broadcastDataChanged(['bookmarks', 'highlights', 'tags']);
   }
 
   return { success: true };
 }
 
 async function deleteHighlight(id) {
+  return withStorageWriteLock(() => deleteHighlightUnlocked(id));
+}
+
+async function deleteHighlightUnlocked(id) {
   const highlights = (await getStorage('highlights')) || {};
   const bookmarks = (await getStorage('bookmarks')) || {};
 
@@ -497,6 +569,7 @@ async function deleteHighlight(id) {
       await setStorage('bookmarks', bookmarks);
     }
     await refreshReviewBadge();
+    await broadcastDataChanged(['bookmarks', 'highlights']);
   }
 
   return { success: true };
@@ -530,16 +603,25 @@ async function getAllTags() {
 }
 
 async function updateBookmarkTags(url, tags) {
+  return withStorageWriteLock(() => updateBookmarkTagsUnlocked(url, tags));
+}
+
+async function updateBookmarkTagsUnlocked(url, tags) {
   const bookmarks = (await getStorage('bookmarks')) || {};
   if (bookmarks[url]) {
     bookmarks[url].tags = tags;
     await setStorage('bookmarks', bookmarks);
     await syncTags(bookmarks);
+    await broadcastDataChanged(['bookmarks', 'tags']);
   }
   return { success: true };
 }
 
 async function deleteTag(tag) {
+  return withStorageWriteLock(() => deleteTagUnlocked(tag));
+}
+
+async function deleteTagUnlocked(tag) {
   const bookmarks = (await getStorage('bookmarks')) || {};
   let modified = false;
   Object.values(bookmarks).forEach(bm => {
@@ -551,6 +633,7 @@ async function deleteTag(tag) {
   if (modified) {
     await setStorage('bookmarks', bookmarks);
     await syncTags(bookmarks);
+    await broadcastDataChanged(['bookmarks', 'tags']);
   }
   return { success: true };
 }
@@ -562,21 +645,31 @@ async function syncTags(bookmarks) {
 }
 
 async function updateHighlightNote(id, note) {
+  return withStorageWriteLock(() => updateHighlightNoteUnlocked(id, note));
+}
+
+async function updateHighlightNoteUnlocked(id, note) {
   const highlights = (await getStorage('highlights')) || {};
   if (highlights[id]) {
     highlights[id].note = note;
     await setStorage('highlights', highlights);
+    await broadcastDataChanged(['highlights']);
     return { success: true, highlight: highlights[id] };
   }
   return { success: false, error: 'Highlight not found' };
 }
 
 async function updateHighlightRange(id, serializedRange) {
+  return withStorageWriteLock(() => updateHighlightRangeUnlocked(id, serializedRange));
+}
+
+async function updateHighlightRangeUnlocked(id, serializedRange) {
   const highlights = (await getStorage('highlights')) || {};
   if (highlights[id]) {
     highlights[id].serializedRange = serializedRange;
     highlights[id].active = true;
     await setStorage('highlights', highlights);
+    await broadcastDataChanged(['highlights']);
     return { success: true, highlight: highlights[id] };
   }
   return { success: false, error: 'Highlight not found' };
@@ -592,8 +685,13 @@ async function getSettings() {
 }
 
 async function saveSettings(settings) {
+  return withStorageWriteLock(() => saveSettingsUnlocked(settings));
+}
+
+async function saveSettingsUnlocked(settings) {
   await setStorage('settings', settings);
   await refreshReviewBadge();
+  await broadcastDataChanged(['settings']);
   return { success: true };
 }
 
@@ -659,6 +757,10 @@ async function getDueReviews() {
 }
 
 async function updateReviewResult(id, quality) {
+  return withStorageWriteLock(() => updateReviewResultUnlocked(id, quality));
+}
+
+async function updateReviewResultUnlocked(id, quality) {
   const highlights = (await getStorage('highlights')) || {};
   if (!highlights[id]) return { success: false, error: 'Highlight not found' };
 
@@ -668,10 +770,15 @@ async function updateReviewResult(id, quality) {
   highlights[id].review = review;
   await setStorage('highlights', highlights);
   await refreshReviewBadge();
+  await broadcastDataChanged(['highlights']);
   return { success: true, sm2: highlights[id].review.sm2 };
 }
 
 async function updateHighlightReview(id, enabled) {
+  return withStorageWriteLock(() => updateHighlightReviewUnlocked(id, enabled));
+}
+
+async function updateHighlightReviewUnlocked(id, enabled) {
   const highlights = (await getStorage('highlights')) || {};
   if (!highlights[id]) return { success: false, error: 'Highlight not found' };
 
@@ -683,14 +790,20 @@ async function updateHighlightReview(id, enabled) {
   };
   await setStorage('highlights', highlights);
   await refreshReviewBadge();
+  await broadcastDataChanged(['highlights']);
   return { success: true, review: highlights[id].review };
 }
 
 async function updateHighlightTags(id, tags) {
+  return withStorageWriteLock(() => updateHighlightTagsUnlocked(id, tags));
+}
+
+async function updateHighlightTagsUnlocked(id, tags) {
   const highlights = (await getStorage('highlights')) || {};
   if (!highlights[id]) return { success: false, error: 'Highlight not found' };
   highlights[id].tags = tags;
   await setStorage('highlights', highlights);
+  await broadcastDataChanged(['highlights']);
   return { success: true };
 }
 

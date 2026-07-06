@@ -136,6 +136,65 @@ assert.doesNotMatch(
   'search input should not use type="search" when a custom clear button is rendered'
 );
 
+const exportDialogRuleMatch = panelCss.match(/\.export-dialog\s*\{[^}]*\}/);
+assert.ok(exportDialogRuleMatch, 'panel.css should style the Markdown export dialog');
+assert.match(
+  exportDialogRuleMatch[0],
+  /border:\s*none/,
+  'export dialog should avoid the default native dialog border'
+);
+assert.match(
+  exportDialogRuleMatch[0],
+  /margin:\s*auto/,
+  'export dialog should be centered in the side panel viewport'
+);
+assert.match(
+  exportDialogRuleMatch[0],
+  /overflow:\s*hidden/,
+  'export dialog should clip header and body backgrounds to its rounded corners'
+);
+
+const exportHeaderRuleMatch = panelCss.match(/\.export-dialog \.modal-header\s*\{[^}]*\}/);
+assert.ok(exportHeaderRuleMatch, 'panel.css should give the export dialog a dedicated header style');
+assert.match(
+  exportHeaderRuleMatch[0],
+  /padding:\s*14px 16px 12px/,
+  'export dialog header should have polished spacing'
+);
+assert.match(
+  exportHeaderRuleMatch[0],
+  /border-bottom:\s*1px solid var\(--border\)/,
+  'export dialog header should be visually separated from export actions'
+);
+
+const exportScopeRuleMatch = panelCss.match(/\.export-scope-btn\s*\{[^}]*\}/);
+assert.ok(exportScopeRuleMatch, 'panel.css should style export scope buttons');
+assert.match(
+  exportScopeRuleMatch[0],
+  /display:\s*grid/,
+  'export scope buttons should use a stable action-row layout'
+);
+assert.match(
+  exportScopeRuleMatch[0],
+  /padding:\s*13px 42px 13px 14px/,
+  'export scope buttons should reserve room for the action arrow'
+);
+assert.match(
+  exportScopeRuleMatch[0],
+  /position:\s*relative/,
+  'export scope buttons should anchor their action arrow'
+);
+assert.match(
+  panelCss,
+  /\.export-scope-btn::after\s*\{[^}]*content:\s*'›'/,
+  'export scope buttons should show a compact action arrow'
+);
+assert.match(
+  panelCss,
+  /\.export-scope-btn:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--accent\)/,
+  'export scope buttons should have a clear keyboard focus state'
+);
+
 const noteTextRuleMatch = panelCss.match(/\.highlight-note-text\s*\{[^}]*\}/);
 assert.ok(noteTextRuleMatch, 'panel.css should style highlight notes');
 assert.match(
@@ -147,6 +206,37 @@ assert.match(
   noteTextRuleMatch[0],
   /border:\s*1px solid var\(--border\)/,
   'highlight notes should have a light border so the background reads as a note block'
+);
+assert.match(
+  noteTextRuleMatch[0],
+  /max-width:\s*100%/,
+  'highlight notes should stay within the side panel width'
+);
+
+const noteContentRuleMatch = panelCss.match(/\.highlight-note-content\s*\{[^}]*\}/);
+assert.ok(noteContentRuleMatch, 'panel.css should style highlight note content');
+assert.match(
+  noteContentRuleMatch[0],
+  /min-width:\s*0/,
+  'highlight note content should be allowed to shrink inside the note flex row'
+);
+assert.match(
+  noteContentRuleMatch[0],
+  /overflow-wrap:\s*anywhere/,
+  'long highlight notes should wrap instead of forcing horizontal overflow'
+);
+
+const highlightsListOpenRuleMatch = panelCss.match(/\.highlights-list\.open\s*\{[^}]*\}/);
+assert.ok(highlightsListOpenRuleMatch, 'panel.css should style expanded highlight lists');
+assert.doesNotMatch(
+  highlightsListOpenRuleMatch[0],
+  /max-height:\s*600px/,
+  'expanded highlight lists should not clip long annotations at 600px'
+);
+assert.match(
+  highlightsListOpenRuleMatch[0],
+  /max-height:\s*9999px/,
+  'expanded highlight lists should leave enough height for long annotations'
 );
 
 const highlightItemRuleMatch = panelCss.match(/\.highlight-item\s*\{[^}]*\}/);

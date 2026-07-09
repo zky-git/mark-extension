@@ -67,12 +67,7 @@
 
   function showPanelNotice(message, tone = 'danger') {
     const noticeHost = document.getElementById('panel-notice-host');
-    const settingsPanel = document.getElementById('settings-panel');
-    const settingsBody = settingsPanel?.querySelector('.settings-body');
-    const target = settingsPanel && !settingsPanel.classList.contains('hidden') && settingsBody
-      ? settingsBody
-      : noticeHost;
-    if (!target) return;
+    if (!noticeHost) return;
 
     let notice = document.getElementById('panel-notice');
     if (!notice) {
@@ -82,7 +77,7 @@
       notice.setAttribute('role', 'status');
       notice.setAttribute('aria-live', 'polite');
     }
-    target.prepend(notice);
+    noticeHost.replaceChildren(notice);
 
     notice.textContent = message;
     notice.dataset.tone = tone;
@@ -737,7 +732,7 @@
 
     const expandBtn = document.createElement('button');
     expandBtn.className = 'card-expand-btn';
-    expandBtn.innerHTML = `✏️ ${highlights.length} 条划线 <span class="expand-arrow">▼</span>`;
+    expandBtn.innerHTML = `✏️ ${highlights.length} 条想法 / 划线 <span class="expand-arrow">▼</span>`;
     if (highlights.length === 0) {
       expandBtn.style.color = 'var(--text-muted)';
       expandBtn.style.cursor = 'default';
@@ -938,6 +933,20 @@
         }
         noteTextDiv.appendChild(contentSpan);
 
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'highlight-note-copy-btn';
+        copyBtn.textContent = '复制';
+        copyBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          try {
+            await navigator.clipboard.writeText(h.note);
+            showPanelNotice('批注已复制。', 'success');
+          } catch (err) {
+            console.warn('[MarkBuddy Panel] Failed to copy annotation:', err);
+            showPanelNotice('复制失败，请稍后重试。');
+          }
+        });
+
         const editBtn = document.createElement('button');
         editBtn.className = 'highlight-note-edit-btn';
         editBtn.textContent = '编辑';
@@ -951,13 +960,17 @@
         deleteBtn.textContent = '删除';
         deleteBtn.addEventListener('click', async (e) => {
           e.stopPropagation();
+          const ok = await showCustomConfirm('确定要删除这条批注吗？', '确认删除批注');
+          if (!ok) return;
           h.note = '';
           await sendMessage('UPDATE_HIGHLIGHT_NOTE', { id: h.id, note: '' });
           await loadAll();
+          showPanelNotice('批注已删除。', 'success');
         });
 
         const noteBtns = document.createElement('div');
         noteBtns.className = 'highlight-note-btn-row';
+        noteBtns.appendChild(copyBtn);
         noteBtns.appendChild(editBtn);
         noteBtns.appendChild(deleteBtn);
 

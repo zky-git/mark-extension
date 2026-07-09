@@ -27,6 +27,7 @@ const storageData = {
   settings: { reviewEnabled: true },
   groupByDomain: true,
   sortBy: 'time-desc',
+  deletedItems: { bookmarks: {}, highlights: {} },
 };
 
 const pullGate = createDeferred();
@@ -91,6 +92,7 @@ const remoteData = {
   settings: { reviewEnabled: true },
   groupByDomain: false,
   sortBy: 'updated-desc',
+  deletedItems: { bookmarks: {}, highlights: {} },
 };
 
 const context = {
@@ -102,7 +104,7 @@ const context = {
   setTimeout,
   clearTimeout,
   MarkBuddyBackup: {
-    BACKUP_KEYS: ['bookmarks', 'highlights', 'tags', 'settings', 'groupByDomain', 'sortBy'],
+    BACKUP_KEYS: ['bookmarks', 'highlights', 'tags', 'settings', 'groupByDomain', 'sortBy', 'deletedItems'],
   },
   MarkBuddyGitHubProvider: {
     createGitHubProvider() {
@@ -147,6 +149,25 @@ vm.runInNewContext(source, context, { filename: 'service-worker.js' });
   assert.ok(savedHighlight, 'queued local save should be applied after pull restores remote data');
   assert.deepEqual(storageData.bookmarks['https://local.example'].highlightIds, [savedHighlight.id]);
   assert.equal(storageData.gitSyncState.lastRemoteSha, 'remote-after-pull');
+
+  await context.deleteHighlight(savedHighlight.id);
+  assert.equal(storageData.highlights[savedHighlight.id], undefined);
+  assert.equal(storageData.bookmarks['https://local.example'].highlightIds.includes(savedHighlight.id), false);
+  assert.equal(typeof storageData.deletedItems.highlights[savedHighlight.id].deletedAt, 'number');
+
+  const bookmarkWithHighlight = await context.saveHighlight({
+    url: 'https://delete-bookmark.example',
+    text: 'Deleted with bookmark',
+    color: '#FFD700',
+    serializedRange: { start: 3, end: 4 },
+    pageTitle: 'Delete bookmark',
+    pageFavicon: '',
+  });
+  await context.deleteBookmark('https://delete-bookmark.example');
+  assert.equal(storageData.bookmarks['https://delete-bookmark.example'], undefined);
+  assert.equal(storageData.highlights[bookmarkWithHighlight.highlight.id], undefined);
+  assert.equal(typeof storageData.deletedItems.bookmarks['https://delete-bookmark.example'].deletedAt, 'number');
+  assert.equal(typeof storageData.deletedItems.highlights[bookmarkWithHighlight.highlight.id].deletedAt, 'number');
 
   console.log('service-worker storage safety tests passed');
 })().catch((err) => {

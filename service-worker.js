@@ -34,6 +34,23 @@ function withStorageWriteLock(operation) {
   return run;
 }
 
+function createDeletedItemsUpdate(current = {}) {
+  return {
+    bookmarks: { ...(current.bookmarks || {}) },
+    highlights: { ...(current.highlights || {}) },
+  };
+}
+
+function markDeleted(deletedItems, type, id, deletedAt) {
+  if (!id) return;
+  if (!deletedItems[type]) deletedItems[type] = {};
+  deletedItems[type][id] = { id, deletedAt };
+}
+
+function clearDeleted(deletedItems, type, id) {
+  if (deletedItems[type]) delete deletedItems[type][id];
+}
+
 // Track connection from side panel to monitor open/close state
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name === 'markbuddy-sidepanel') {
@@ -428,6 +445,11 @@ async function pushGitSyncUnlocked(options = {}) {
   });
 
   if (pushResult.success && pushResult.state) {
+    if (pushResult.data) {
+      await chrome.storage.local.set(pushResult.data);
+      await refreshReviewBadge();
+      await broadcastDataChanged(Object.keys(pushResult.data || {}));
+    }
     await setStorage(GIT_SYNC_STATE_KEY, pushResult.state);
   }
   return pushResult;
@@ -460,13 +482,16 @@ async function saveBookmark({ url, title, favicon, tags = [] }) {
 
 async function saveBookmarkUnlocked({ url, title, favicon, tags = [] }) {
   const bookmarks = (await getStorage('bookmarks')) || {};
+  const deletedItems = createDeletedItemsUpdate((await getStorage('deletedItems')) || {});
+  const now = Date.now();
 
   if (!bookmarks[url]) {
     bookmarks[url] = {
       url,
       title: title || url,
       favicon: favicon || '',
-      savedAt: Date.now(),
+      savedAt: now,
+      updatedAt: now,
       tags,
       highlightIds: [],
     };
@@ -475,11 +500,14 @@ async function saveBookmarkUnlocked({ url, title, favicon, tags = [] }) {
     bookmarks[url].title = title || bookmarks[url].title;
     bookmarks[url].favicon = favicon || bookmarks[url].favicon;
     if (tags.length > 0) bookmarks[url].tags = tags;
+    bookmarks[url].updatedAt = now;
   }
+  clearDeleted(deletedItems, 'bookmarks', url);
 
   await setStorage('bookmarks', bookmarks);
+  await setStorage('deletedItems', deletedItems);
   await syncTags(bookmarks);
-  await broadcastDataChanged(['bookmarks', 'tags']);
+  await broadcastDataChanged(['bookmarks', 'tags', 'deletedItems']);
   return { success: true, bookmark: bookmarks[url] };
 }
 
@@ -490,20 +518,25 @@ async function saveHighlight({ url, text, color, serializedRange, pageTitle, pag
 async function saveHighlightUnlocked({ url, text, color, serializedRange, pageTitle, pageFavicon }) {
   const highlights = (await getStorage('highlights')) || {};
   const bookmarks = (await getStorage('bookmarks')) || {};
+  const deletedItems = createDeletedItemsUpdate((await getStorage('deletedItems')) || {});
+  const now = Date.now();
 
-  const id = `hl_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const id = `hl_${now}_${Math.random().toString(36).slice(2, 7)}`;
 
   highlights[id] = {
     id,
     url,
     text,
     color: color || '#FFD700',
-    savedAt: Date.now(),
+    savedAt: now,
+    updatedAt: now,
     serializedRange,
     active: true,
   };
+  clearDeleted(deletedItems, 'highlights', id);
 
   await setStorage('highlights', highlights);
+  await setStorage('deletedItems', deletedItems);
 
   // Auto-bookmark the page when saving a highlight
   if (!bookmarks[url]) {
@@ -511,7 +544,8 @@ async function saveHighlightUnlocked({ url, text, color, serializedRange, pageTi
       url,
       title: pageTitle || url,
       favicon: pageFavicon || '',
-      savedAt: Date.now(),
+      savedAt: now,
+      updatedAt: now,
       tags: [],
       highlightIds: [id],
     };
@@ -520,10 +554,11 @@ async function saveHighlightUnlocked({ url, text, color, serializedRange, pageTi
   } else {
     if (!bookmarks[url].highlightIds) bookmarks[url].highlightIds = [];
     bookmarks[url].highlightIds.push(id);
+    bookmarks[url].updatedAt = now;
     await setStorage('bookmarks', bookmarks);
   }
 
-  await broadcastDataChanged(['bookmarks', 'highlights', 'tags']);
+  await broadcastDataChanged(['bookmarks', 'highlights', 'tags', 'deletedItems']);
   return { success: true, highlight: highlights[id] };
 }
 
@@ -534,17 +569,24 @@ async function deleteBookmark(url) {
 async function deleteBookmarkUnlocked(url) {
   const bookmarks = (await getStorage('bookmarks')) || {};
   const highlights = (await getStorage('highlights')) || {};
+  const deletedItems = createDeletedItemsUpdate((await getStorage('deletedItems')) || {});
 
   if (bookmarks[url]) {
+    const deletedAt = Date.now();
     // Also delete associated highlights
     const ids = bookmarks[url].highlightIds || [];
-    ids.forEach(id => delete highlights[id]);
+    ids.forEach(id => {
+      delete highlights[id];
+      markDeleted(deletedItems, 'highlights', id, deletedAt);
+    });
     await setStorage('highlights', highlights);
     delete bookmarks[url];
+    markDeleted(deletedItems, 'bookmarks', url, deletedAt);
     await setStorage('bookmarks', bookmarks);
+    await setStorage('deletedItems', deletedItems);
     await syncTags(bookmarks);
     await refreshReviewBadge();
-    await broadcastDataChanged(['bookmarks', 'highlights', 'tags']);
+    await broadcastDataChanged(['bookmarks', 'highlights', 'tags', 'deletedItems']);
   }
 
   return { success: true };
@@ -557,19 +599,24 @@ async function deleteHighlight(id) {
 async function deleteHighlightUnlocked(id) {
   const highlights = (await getStorage('highlights')) || {};
   const bookmarks = (await getStorage('bookmarks')) || {};
+  const deletedItems = createDeletedItemsUpdate((await getStorage('deletedItems')) || {});
 
   if (highlights[id]) {
+    const deletedAt = Date.now();
     const url = highlights[id].url;
     delete highlights[id];
+    markDeleted(deletedItems, 'highlights', id, deletedAt);
     await setStorage('highlights', highlights);
+    await setStorage('deletedItems', deletedItems);
 
     // Remove from bookmark's highlightIds
     if (bookmarks[url]) {
       bookmarks[url].highlightIds = (bookmarks[url].highlightIds || []).filter(hid => hid !== id);
+      bookmarks[url].updatedAt = deletedAt;
       await setStorage('bookmarks', bookmarks);
     }
     await refreshReviewBadge();
-    await broadcastDataChanged(['bookmarks', 'highlights']);
+    await broadcastDataChanged(['bookmarks', 'highlights', 'deletedItems']);
   }
 
   return { success: true };
@@ -610,6 +657,7 @@ async function updateBookmarkTagsUnlocked(url, tags) {
   const bookmarks = (await getStorage('bookmarks')) || {};
   if (bookmarks[url]) {
     bookmarks[url].tags = tags;
+    bookmarks[url].updatedAt = Date.now();
     await setStorage('bookmarks', bookmarks);
     await syncTags(bookmarks);
     await broadcastDataChanged(['bookmarks', 'tags']);
@@ -623,10 +671,12 @@ async function deleteTag(tag) {
 
 async function deleteTagUnlocked(tag) {
   const bookmarks = (await getStorage('bookmarks')) || {};
+  const now = Date.now();
   let modified = false;
   Object.values(bookmarks).forEach(bm => {
     if (bm.tags && bm.tags.includes(tag)) {
       bm.tags = bm.tags.filter(t => t !== tag);
+      bm.updatedAt = now;
       modified = true;
     }
   });
@@ -651,6 +701,7 @@ async function updateHighlightNote(id, note) {
 async function updateHighlightNoteUnlocked(id, note) {
   const highlights = (await getStorage('highlights')) || {};
   if (highlights[id]) {
+    highlights[id].updatedAt = Date.now();
     highlights[id].note = note;
     await setStorage('highlights', highlights);
     await broadcastDataChanged(['highlights']);
@@ -666,6 +717,7 @@ async function updateHighlightRange(id, serializedRange) {
 async function updateHighlightRangeUnlocked(id, serializedRange) {
   const highlights = (await getStorage('highlights')) || {};
   if (highlights[id]) {
+    highlights[id].updatedAt = Date.now();
     highlights[id].serializedRange = serializedRange;
     highlights[id].active = true;
     await setStorage('highlights', highlights);
@@ -768,6 +820,7 @@ async function updateReviewResultUnlocked(id, quality) {
   review.enabled = true;
   review.sm2 = computeSM2(review.sm2 || createInitialReviewState(true).sm2, quality);
   highlights[id].review = review;
+  highlights[id].updatedAt = Date.now();
   await setStorage('highlights', highlights);
   await refreshReviewBadge();
   await broadcastDataChanged(['highlights']);
@@ -788,6 +841,7 @@ async function updateHighlightReviewUnlocked(id, enabled) {
     enabled: Boolean(enabled),
     sm2: current.sm2 || createInitialReviewState(Boolean(enabled)).sm2,
   };
+  highlights[id].updatedAt = Date.now();
   await setStorage('highlights', highlights);
   await refreshReviewBadge();
   await broadcastDataChanged(['highlights']);
@@ -802,6 +856,7 @@ async function updateHighlightTagsUnlocked(id, tags) {
   const highlights = (await getStorage('highlights')) || {};
   if (!highlights[id]) return { success: false, error: 'Highlight not found' };
   highlights[id].tags = tags;
+  highlights[id].updatedAt = Date.now();
   await setStorage('highlights', highlights);
   await broadcastDataChanged(['highlights']);
   return { success: true };

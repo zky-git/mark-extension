@@ -34,10 +34,18 @@ const storageSnapshot = {
   settings: { defaultColor: '#FFD700', presetColors: ['#FFD700'] },
   groupByDomain: true,
   sortBy: 'time-desc',
+  deletedItems: {
+    bookmarks: {
+      'https://deleted.example': { id: 'https://deleted.example', deletedAt: exportedAt - 1000 },
+    },
+    highlights: {
+      h0: { id: 'h0', deletedAt: exportedAt - 500 },
+    },
+  },
   unrelatedCache: { ignored: true },
 };
 
-assert.deepEqual(BACKUP_KEYS, ['bookmarks', 'highlights', 'tags', 'settings', 'groupByDomain', 'sortBy']);
+assert.deepEqual(BACKUP_KEYS, ['bookmarks', 'highlights', 'tags', 'settings', 'groupByDomain', 'sortBy', 'deletedItems']);
 
 const payload = createBackupPayload(storageSnapshot, { exportedAt });
 assert.equal(payload.app, 'MarkBuddy');
@@ -72,6 +80,7 @@ assert.deepEqual(sparseParsed.data, {
   settings: {},
   groupByDomain: true,
   sortBy: 'time-desc',
+  deletedItems: { bookmarks: {}, highlights: {} },
 });
 
 assert.throws(
@@ -87,6 +96,11 @@ assert.throws(
 assert.throws(
   () => parseBackupPayload(JSON.stringify({ app: 'MarkBuddy', version: 1, data: { bookmarks: [] } })),
   /bookmarks 格式无效/
+);
+
+assert.throws(
+  () => parseBackupPayload(JSON.stringify({ app: 'MarkBuddy', version: 1, data: { deletedItems: [] } })),
+  /deletedItems 格式无效/
 );
 
 assert.equal(

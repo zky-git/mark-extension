@@ -51,6 +51,10 @@ assert.ok(
 );
 assert.match(html, /class="icon-btn git-sync-quick-btn hidden"[\s\S]*?id="git-sync-quick-btn"/, 'quick Git sync button should be hidden until config is usable');
 assert.match(html, /id="git-sync-quick-btn"[\s\S]*?data-tooltip="同步数据到 Git 仓库"/, 'quick Git sync button should explain its action');
+assert.match(html, /class="git-sync-cloud"/, 'quick Git sync icon should use a cloud symbol to imply network sync');
+assert.match(html, /class="git-sync-transfer"/, 'quick Git sync icon should use a lighter upload/download transfer symbol');
+assert.match(html, /class="git-sync-state git-sync-state-success"/, 'quick Git sync button should include a success check state');
+assert.match(html, /class="git-sync-state git-sync-state-error"/, 'quick Git sync button should include an error state');
 assert.match(html, /id="export-toggle-btn"[\s\S]*?data-tooltip="导出收藏为 Markdown"/, 'export button should explain its action');
 assert.match(html, /id="settings-toggle-btn"[\s\S]*?data-tooltip="打开设置"/, 'settings button should explain its action');
 ['git-sync-quick-btn', 'export-toggle-btn', 'settings-toggle-btn'].forEach(id => {
@@ -61,6 +65,7 @@ assert.match(html, /id="settings-toggle-btn"[\s\S]*?data-tooltip="打开设置"/
 assert.match(panelCss, /\.icon-btn\[data-tooltip\]::after/, 'icon buttons should render custom tooltip text');
 assert.match(panelCss, /\.icon-btn\[data-tooltip\]:hover::after/, 'icon button tooltips should appear on hover');
 assert.match(panelCss, /\.icon-btn\[data-tooltip\]:focus-visible::after/, 'icon button tooltips should appear on keyboard focus');
+assert.match(html, /placeholder="搜索网页标题、划线或批注\.\.\."/u, 'search should explicitly include annotations as a searchable first-class target');
 assert.match(gitSyncJs, /function isGitSyncConfigUsable\(config = \{\}\)/, 'Git sync UI should centralize config usability checks');
 assert.match(gitSyncJs, /function updateLastSuccessMeta\(state = \{\}\)/, 'Git sync UI should update the last successful sync summary separately from operation status');
 assert.match(gitSyncJs, /state\.lastSyncAt[\s\S]*state\.lastCommitSha/, 'Git sync summary should require both a successful sync time and commit sha');
@@ -69,8 +74,18 @@ assert.match(gitSyncJs, /toggleQuickSync\(resp\.config\)/, 'Git sync UI should r
 assert.match(gitSyncJs, /bind\('git-sync-quick-btn', \(\) => quickSyncToGit\(false\)\)/, 'quick Git sync button should trigger the fast sync action');
 assert.match(gitSyncJs, /resp\.noChange/, 'quick Git sync should handle no-change sync results');
 assert.match(gitSyncJs, /本地数据未变化，无需同步。/, 'quick Git sync should explain when no commit is needed');
-assert.match(gitSyncJs, /panelApi\(\)\.notice\?\.\(`已同步到 Git/, 'quick Git sync should show a panel notice after a successful sync');
+assert.match(gitSyncJs, /已合并并同步到 Git/, 'quick Git sync should show a panel notice after a successful merged sync');
+assert.match(gitSyncJs, /function setQuickSyncState\(state\)/, 'Git sync UI should centralize quick sync visual state');
+assert.match(gitSyncJs, /setQuickSyncState\('syncing'\)/, 'quick Git sync should show a syncing state during network I/O');
+assert.match(gitSyncJs, /setQuickSyncState\('success'\)/, 'quick Git sync should show a success state after successful network I/O');
+assert.match(gitSyncJs, /setQuickSyncState\('error'\)/, 'quick Git sync should show an error state after failed network I/O');
 assert.match(panelCss, /\.git-sync-quick-btn\.syncing/, 'panel.css should style the quick Git sync busy state');
+assert.match(panelCss, /\.git-sync-quick-btn\[data-sync-state="success"\]/, 'panel.css should style quick Git sync success state');
+assert.match(panelCss, /\.git-sync-quick-btn\[data-sync-state="error"\]/, 'panel.css should style quick Git sync error state');
+assert.match(panelCss, /\.git-sync-transfer/, 'panel.css should animate only the transfer arrows instead of treating the icon like refresh');
+const quickSyncButtonRuleMatch = panelCss.match(/\.git-sync-quick-btn\s*\{[^}]*\}/);
+assert.ok(quickSyncButtonRuleMatch, 'panel.css should style the quick Git sync button');
+assert.doesNotMatch(quickSyncButtonRuleMatch[0], /color:\s*var\(--accent\)/, 'quick Git sync should not default to accent color');
 
 assert.match(html, /<option value="system">跟随系统<\/option>/, 'theme selector should default to a system option');
 assert.match(html, /<option value="light">浅色模式<\/option>/, 'theme selector should include light mode');
@@ -212,6 +227,16 @@ assert.match(
   /max-width:\s*100%/,
   'highlight notes should stay within the side panel width'
 );
+assert.match(
+  noteTextRuleMatch[0],
+  /font-size:\s*12px/,
+  'highlight notes should be visually stronger than excerpt text'
+);
+assert.match(
+  noteTextRuleMatch[0],
+  /color:\s*var\(--text-primary\)/,
+  'highlight notes should use primary text color so user thinking reads first'
+);
 
 const noteContentRuleMatch = panelCss.match(/\.highlight-note-content\s*\{[^}]*\}/);
 assert.ok(noteContentRuleMatch, 'panel.css should style highlight note content');
@@ -224,6 +249,31 @@ assert.match(
   noteContentRuleMatch[0],
   /overflow-wrap:\s*anywhere/,
   'long highlight notes should wrap instead of forcing horizontal overflow'
+);
+assert.match(
+  panelJs,
+  /highlight-note-copy-btn/,
+  'highlight annotations should include a copy action beside edit and delete'
+);
+assert.match(
+  panelJs,
+  /navigator\.clipboard\.writeText\(h\.note\)/,
+  'highlight annotation copy action should write the annotation text to the clipboard'
+);
+assert.match(
+  fs.readFileSync('manifest.json', 'utf8'),
+  /"clipboardWrite"/,
+  'extension should request clipboardWrite for annotation copy'
+);
+assert.match(
+  panelJs,
+  /showCustomConfirm\('确定要删除这条批注吗？'/,
+  'deleting a highlight annotation should ask for confirmation first'
+);
+assert.match(
+  panelJs,
+  /showPanelNotice\('批注已删除。', 'success'\)/,
+  'deleting a highlight annotation should show a success message'
 );
 
 const highlightsListOpenRuleMatch = panelCss.match(/\.highlights-list\.open\s*\{[^}]*\}/);
@@ -250,6 +300,20 @@ assert.match(
   highlightItemRuleMatch[0],
   /padding-right:\s*36px/,
   'highlight list items should reserve right-side space for the fixed delete button'
+);
+
+assert.match(
+  panelJs,
+  /条想法 \/ 划线/,
+  'expanded bookmark control should frame entries as user thoughts before raw highlights'
+);
+
+const cardTitleRuleMatch = panelCss.match(/\.card-title\s*\{[^}]*\}/);
+assert.ok(cardTitleRuleMatch, 'panel.css should style bookmark titles');
+assert.match(
+  cardTitleRuleMatch[0],
+  /color:\s*var\(--text-secondary\)/,
+  'bookmark titles should be visually weaker than annotations'
 );
 
 const highlightDeleteRuleMatch = panelCss.match(/\.highlight-delete-btn\s*\{[^}]*\}/);
@@ -311,8 +375,20 @@ assert.match(panelJs, /getElementById\('panel-notice-host'\)/, 'panel notices sh
 const showPanelNoticeMatch = panelJs.match(/function showPanelNotice\(message, tone = 'danger'\) \{[\s\S]*?\n  \}/);
 assert.ok(showPanelNoticeMatch, 'panel.js should define showPanelNotice');
 assert.doesNotMatch(showPanelNoticeMatch[0], /bookmark-list/, 'panel notices should not be inserted into the bookmark list');
+assert.doesNotMatch(showPanelNoticeMatch[0], /settings-body/, 'panel notices should not be inserted into settings content flow');
 assert.match(panelCss, /\.panel-notice-host:empty\s*\{[^}]*display:\s*none/, 'empty notice host should not reserve space');
-assert.match(panelCss, /\.panel-notice-host\s*\{[^}]*padding:\s*10px 14px 0/, 'top notice host should align with panel content');
+const panelNoticeHostRuleMatch = panelCss.match(/\.panel-notice-host\s*\{[^}]*\}/);
+assert.ok(panelNoticeHostRuleMatch, 'panel.css should style the notice host');
+assert.match(
+  panelNoticeHostRuleMatch[0],
+  /position:\s*fixed/,
+  'panel notices should be detached from document flow'
+);
+assert.match(
+  panelNoticeHostRuleMatch[0],
+  /z-index:\s*120/,
+  'panel notices should float above panel content and dialogs'
+);
 assert.match(panelJs, /function openBookmarkUrl\(url\)/, 'panel.js should open bookmark URLs through a failure-aware helper');
 assert.match(panelJs, /无法打开网页，请检查链接是否有效。/, 'panel.js should show a clear message when a saved page cannot be opened');
 assert.match(panelJs, /title\.addEventListener\('click'[\s\S]*?e\.preventDefault\(\)[\s\S]*?openBookmarkUrl\(bm\.url\)/, 'bookmark title clicks should use the failure-aware opener instead of default anchor navigation');

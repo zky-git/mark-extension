@@ -9,6 +9,7 @@
     path: 'git-sync-path-input',
   };
   const fixedSyncPath = 'markbuddy/data.json';
+  let quickSyncResetTimer = null;
 
   function $(id) {
     return document.getElementById(id);
@@ -25,6 +26,25 @@
     status.dataset.tone = tone;
   }
 
+  function setQuickSyncState(state) {
+    const quickBtn = $('git-sync-quick-btn');
+    if (!quickBtn) return;
+    if (quickSyncResetTimer) {
+      clearTimeout(quickSyncResetTimer);
+      quickSyncResetTimer = null;
+    }
+    quickBtn.dataset.syncState = state;
+    quickBtn.classList.toggle('syncing', state === 'syncing');
+    if (state === 'success' || state === 'error') {
+      quickSyncResetTimer = setTimeout(() => {
+        if (quickBtn.dataset.syncState === state) {
+          quickBtn.dataset.syncState = 'idle';
+          quickBtn.classList.remove('syncing');
+        }
+      }, 1600);
+    }
+  }
+
   function setBusy(isBusy) {
     [
       'git-sync-quick-btn',
@@ -37,8 +57,6 @@
       const btn = $(id);
       if (btn) btn.disabled = isBusy;
     });
-    const quickBtn = $('git-sync-quick-btn');
-    if (quickBtn) quickBtn.classList.toggle('syncing', isBusy);
   }
 
   function isGitSyncConfigUsable(config = {}) {
@@ -49,6 +67,7 @@
     const quickBtn = $('git-sync-quick-btn');
     if (!quickBtn) return;
     quickBtn.classList.toggle('hidden', !isGitSyncConfigUsable(config));
+    if (!isGitSyncConfigUsable(config)) setQuickSyncState('idle');
   }
 
   function getFormConfig() {
@@ -148,25 +167,30 @@
         return pushStoredConfigToGit(true);
       } else {
         setStatus('已取消上传，请先从 Git 恢复或手动处理冲突。', 'danger');
+        setQuickSyncState('error');
       }
       return null;
     }
     if (!resp?.success) {
       setStatus(resp?.error || '上传到 Git 失败。', 'danger');
+      setQuickSyncState('error');
       return null;
     }
     if (resp.noChange) {
       updateLastSuccessMeta(resp.state);
-      setStatus('本地数据未变化，无需创建新提交。', 'success');
+      setStatus(resp.merged ? '已合并远端数据，无需创建新提交。' : '本地数据未变化，无需创建新提交。', 'success');
+      setQuickSyncState('success');
       return resp;
     }
     updateLastSuccessMeta(resp.state);
-    setStatus(`已上传到 Git${resp.commitSha ? `，commit ${resp.commitSha.slice(0, 7)}` : ''}。`, 'success');
+    setStatus(`${resp.merged ? '已合并并同步到 Git' : '已上传到 Git'}${resp.commitSha ? `，commit ${resp.commitSha.slice(0, 7)}` : ''}。`, 'success');
+    setQuickSyncState('success');
     return resp;
   }
 
   async function pushToGit(force = false) {
     if (!(await saveConfig())) return;
+    setQuickSyncState('syncing');
     await pushStoredConfigToGit(force);
   }
 
@@ -174,15 +198,17 @@
     const status = await send('GIT_SYNC_STATUS');
     if (!status?.success || !isGitSyncConfigUsable(status.config)) {
       toggleQuickSync({});
+      setQuickSyncState('error');
       panelApi().notice?.('Git 同步配置不可用，请先在设置里保存并测试连接。');
       return;
     }
     toggleQuickSync(status.config);
+    setQuickSyncState('syncing');
     const resp = await pushStoredConfigToGit(force);
     if (resp?.noChange) {
-      panelApi().notice?.('本地数据未变化，无需同步。', 'success');
+      panelApi().notice?.(resp.merged ? '已合并远端数据，无需提交。' : '本地数据未变化，无需同步。', 'success');
     } else if (resp?.success) {
-      panelApi().notice?.(`已同步到 Git${resp.commitSha ? `，commit ${resp.commitSha.slice(0, 7)}` : ''}。`, 'success');
+      panelApi().notice?.(`${resp.merged ? '已合并并同步到 Git' : '已同步到 Git'}${resp.commitSha ? `，commit ${resp.commitSha.slice(0, 7)}` : ''}。`, 'success');
     } else {
       panelApi().notice?.('同步到 Git 失败，请打开设置查看详情。');
     }
@@ -199,14 +225,17 @@
       return;
     }
 
+    setQuickSyncState('syncing');
     const resp = await send('GIT_SYNC_PULL');
     if (!resp?.success) {
       setStatus(resp?.error || '从 Git 恢复失败。', 'danger');
+      setQuickSyncState('error');
       return;
     }
     await panelApi().reload?.();
     updateLastSuccessMeta(resp.state);
     setStatus('已从 Git 恢复，列表已刷新。', 'success');
+    setQuickSyncState('success');
   }
 
   async function clearConfig() {
@@ -232,6 +261,9 @@
         await handler();
       } catch (err) {
         setStatus(err.message || 'Git 同步操作失败。', 'danger');
+        if (id === 'git-sync-quick-btn' || id === 'git-sync-push-btn' || id === 'git-sync-pull-btn') {
+          setQuickSyncState('error');
+        }
       } finally {
         setBusy(false);
       }

@@ -5,7 +5,7 @@
     root.MarkBuddyBackup = factory();
   }
 })(typeof globalThis !== 'undefined' ? globalThis : window, function () {
-  const BACKUP_KEYS = ['bookmarks', 'highlights', 'tags', 'settings', 'groupByDomain', 'sortBy'];
+  const BACKUP_KEYS = ['bookmarks', 'highlights', 'tags', 'settings', 'groupByDomain', 'sortBy', 'deletedItems'];
   const DEFAULT_DATA = {
     bookmarks: {},
     highlights: {},
@@ -13,6 +13,7 @@
     settings: {},
     groupByDomain: true,
     sortBy: 'time-desc',
+    deletedItems: { bookmarks: {}, highlights: {} },
   };
 
   function formatDate(value) {
@@ -28,11 +29,21 @@
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
   }
 
+  function normalizeDeletedItems(value) {
+    const deletedItems = isPlainObject(value) ? value : {};
+    return {
+      bookmarks: cloneValue(isPlainObject(deletedItems.bookmarks) ? deletedItems.bookmarks : {}),
+      highlights: cloneValue(isPlainObject(deletedItems.highlights) ? deletedItems.highlights : {}),
+    };
+  }
+
   function createBackupPayload(storageSnapshot, options = {}) {
     const data = {};
     BACKUP_KEYS.forEach(key => {
       const value = storageSnapshot ? storageSnapshot[key] : undefined;
-      data[key] = cloneValue(value === undefined ? DEFAULT_DATA[key] : value);
+      data[key] = key === 'deletedItems'
+        ? normalizeDeletedItems(value)
+        : cloneValue(value === undefined ? DEFAULT_DATA[key] : value);
     });
 
     const payload = {
@@ -80,10 +91,21 @@
     if (data.sortBy !== undefined && typeof data.sortBy !== 'string') {
       throw new Error('sortBy 格式无效。');
     }
+    if (data.deletedItems !== undefined && !isPlainObject(data.deletedItems)) {
+      throw new Error('deletedItems 格式无效。');
+    }
+    if (data.deletedItems?.bookmarks !== undefined && !isPlainObject(data.deletedItems.bookmarks)) {
+      throw new Error('deletedItems 格式无效。');
+    }
+    if (data.deletedItems?.highlights !== undefined && !isPlainObject(data.deletedItems.highlights)) {
+      throw new Error('deletedItems 格式无效。');
+    }
 
     const cleanData = {};
     BACKUP_KEYS.forEach(key => {
-      cleanData[key] = cloneValue(data[key] === undefined ? DEFAULT_DATA[key] : data[key]);
+      cleanData[key] = key === 'deletedItems'
+        ? normalizeDeletedItems(data[key])
+        : cloneValue(data[key] === undefined ? DEFAULT_DATA[key] : data[key]);
     });
 
     const parsed = {

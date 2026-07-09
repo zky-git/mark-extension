@@ -40,6 +40,10 @@
     });
   }
 
+  function isPlainObject(value) {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+  }
+
   function buildSyncMessage(payload) {
     const bookmarkCount = Object.keys(payload.data?.bookmarks || {}).length;
     const highlightCount = Object.keys(payload.data?.highlights || {}).length;
@@ -84,6 +88,107 @@
     }
   }
 
+  function getItemTimestamp(item) {
+    if (!item || typeof item !== 'object') return 0;
+    return Number(item.updatedAt || item.savedAt || 0) || 0;
+  }
+
+  function getTombstoneTimestamp(tombstone) {
+    if (typeof tombstone === 'number') return tombstone;
+    if (!tombstone || typeof tombstone !== 'object') return 0;
+    return Number(tombstone.deletedAt || 0) || 0;
+  }
+
+  function normalizeTombstones(data = {}) {
+    const deletedItems = isPlainObject(data.deletedItems) ? data.deletedItems : {};
+    return {
+      bookmarks: isPlainObject(deletedItems.bookmarks) ? deletedItems.bookmarks : {},
+      highlights: isPlainObject(deletedItems.highlights) ? deletedItems.highlights : {},
+    };
+  }
+
+  function createTombstone(id, existing) {
+    if (isPlainObject(existing)) return cloneValue({ id, ...existing });
+    return { id, deletedAt: getTombstoneTimestamp(existing) };
+  }
+
+  function chooseLatestItem(localItem, remoteItem) {
+    if (!localItem) return cloneValue(remoteItem);
+    if (!remoteItem) return cloneValue(localItem);
+    return getItemTimestamp(remoteItem) > getItemTimestamp(localItem)
+      ? cloneValue(remoteItem)
+      : cloneValue(localItem);
+  }
+
+  function mergeItemMap(localItems = {}, remoteItems = {}, localTombstones = {}, remoteTombstones = {}) {
+    const items = {};
+    const tombstones = {};
+    const ids = new Set([
+      ...Object.keys(localItems || {}),
+      ...Object.keys(remoteItems || {}),
+      ...Object.keys(localTombstones || {}),
+      ...Object.keys(remoteTombstones || {}),
+    ]);
+
+    ids.forEach(id => {
+      const item = chooseLatestItem(localItems[id], remoteItems[id]);
+      const itemTime = getItemTimestamp(item);
+      const localDeletedAt = getTombstoneTimestamp(localTombstones[id]);
+      const remoteDeletedAt = getTombstoneTimestamp(remoteTombstones[id]);
+      const deletedAt = Math.max(localDeletedAt, remoteDeletedAt);
+
+      if (deletedAt && deletedAt >= itemTime) {
+        tombstones[id] = createTombstone(id, remoteDeletedAt >= localDeletedAt ? remoteTombstones[id] : localTombstones[id]);
+        tombstones[id].deletedAt = deletedAt;
+      } else if (item) {
+        items[id] = item;
+      }
+    });
+
+    return { items, tombstones };
+  }
+
+  function mergeTags(localTags = [], remoteTags = []) {
+    return Array.from(new Set([
+      ...(Array.isArray(localTags) ? localTags : []),
+      ...(Array.isArray(remoteTags) ? remoteTags : []),
+    ])).sort();
+  }
+
+  function mergeSyncData(localData = {}, remoteData = {}) {
+    const localTombstones = normalizeTombstones(localData);
+    const remoteTombstones = normalizeTombstones(remoteData);
+    const bookmarks = mergeItemMap(
+      localData.bookmarks || {},
+      remoteData.bookmarks || {},
+      localTombstones.bookmarks,
+      remoteTombstones.bookmarks
+    );
+    const highlights = mergeItemMap(
+      localData.highlights || {},
+      remoteData.highlights || {},
+      localTombstones.highlights,
+      remoteTombstones.highlights
+    );
+
+    return {
+      bookmarks: bookmarks.items,
+      highlights: highlights.items,
+      tags: mergeTags(localData.tags, remoteData.tags),
+      settings: cloneValue(localData.settings || {}),
+      groupByDomain: typeof localData.groupByDomain === 'boolean' ? localData.groupByDomain : true,
+      sortBy: typeof localData.sortBy === 'string' ? localData.sortBy : 'time-desc',
+      deletedItems: {
+        bookmarks: bookmarks.tombstones,
+        highlights: highlights.tombstones,
+      },
+    };
+  }
+
+  function createPayloadFromData(data, options = {}) {
+    return createSyncPayload(data, options);
+  }
+
   async function pushGitSync(options = {}) {
     const config = validateGitConfig(options.config);
     const state = options.state || {};
@@ -93,32 +198,42 @@
     }
 
     const remote = await provider.readFile(config);
-    const payload = createSyncPayload(options.storageSnapshot, {
+    const localPayload = createSyncPayload(options.storageSnapshot, {
       backup: options.backup,
       exportedAt: options.now,
     });
+    let payload = localPayload;
+    let merged = false;
+
+    if (remote.exists && options.force !== true) {
+      let remotePayload;
+      try {
+        remotePayload = options.backup.parseBackupPayload(remote.content);
+      } catch (err) {
+        return {
+          success: false,
+          error: err.message || '远端同步文件格式无效。',
+          remoteSha: remote.sha,
+        };
+      }
+      const mergedData = mergeSyncData(localPayload.data, remotePayload.data);
+      payload = createPayloadFromData(mergedData, {
+        backup: options.backup,
+        exportedAt: options.now,
+      });
+      merged = stableStringify(mergedData) !== stableStringify(localPayload.data);
+    }
+
     const hasSameContent = remote.exists && hasSameSyncContent(remote.content, payload, options.backup);
     if (hasSameContent) {
       return {
         success: true,
         noChange: true,
+        merged,
         payload,
+        data: cloneValue(payload.data),
         state: createStateUpdate('push', remote.sha, state.lastCommitSha, options.now),
         commitSha: null,
-        remoteSha: remote.sha,
-      };
-    }
-
-    if (
-      remote.exists &&
-      state.lastRemoteSha &&
-      remote.sha !== state.lastRemoteSha &&
-      options.force !== true
-    ) {
-      return {
-        success: false,
-        conflict: true,
-        error: '远端数据已变化，请选择覆盖方向。',
         remoteSha: remote.sha,
       };
     }
@@ -131,7 +246,9 @@
 
     return {
       success: true,
+      merged,
       payload,
+      data: cloneValue(payload.data),
       state: createStateUpdate('push', writeResult.sha, writeResult.commitSha, options.now),
       commitSha: writeResult.commitSha,
       remoteSha: writeResult.sha,
@@ -171,6 +288,7 @@
     GIT_SYNC_STATE_KEY,
     SYNC_META,
     createSyncPayload,
+    mergeSyncData,
     pullGitSync,
     pushGitSync,
     sanitizeGitConfig,

@@ -18,6 +18,7 @@ const storageSnapshot = {
   settings: { themeMode: 'dark' },
   groupByDomain: false,
   sortBy: 'updated-desc',
+  deletedItems: { bookmarks: {}, highlights: {} },
   [GIT_SYNC_CONFIG_KEY]: { token: 'secret' },
   [GIT_SYNC_STATE_KEY]: { lastRemoteSha: 'old' },
 };
@@ -74,9 +75,19 @@ const storageSnapshot = {
   assert.equal(writes[0].write.sha, undefined);
   assert.match(writes[0].write.message, /chore\(markbuddy\): sync/);
 
+  const staleRemotePayload = backup.createBackupPayload({
+    ...storageSnapshot,
+    bookmarks: {},
+    highlights: {},
+    tags: [],
+  }, {
+    exportedAt: exportedAt - 1000,
+    sync: { schemaVersion: 1, source: 'git-sync' },
+  });
+
   const updateProvider = {
     async readFile() {
-      return { exists: true, sha: 'remote-sha-1', content: '{}' };
+      return { exists: true, sha: 'remote-sha-1', content: JSON.stringify(staleRemotePayload) };
     },
     async writeFile(configArg, write) {
       assert.equal(write.sha, 'remote-sha-1');
@@ -92,6 +103,79 @@ const storageSnapshot = {
     now: exportedAt,
   });
   assert.equal(pushUpdate.state.lastRemoteSha, 'remote-sha-2');
+
+  const remoteMergePayload = backup.createBackupPayload({
+    bookmarks: {
+      'https://local.example': { url: 'https://local.example', title: 'Local old', savedAt: exportedAt - 3000 },
+      'https://remote.example': { url: 'https://remote.example', title: 'Remote new', savedAt: exportedAt - 1000 },
+    },
+    highlights: {
+      hLocal: { id: 'hLocal', url: 'https://local.example', text: 'local old', savedAt: exportedAt - 3000 },
+      hRemote: { id: 'hRemote', url: 'https://remote.example', text: 'remote new', savedAt: exportedAt - 1000 },
+    },
+    tags: ['remote'],
+    settings: { themeMode: 'light' },
+    groupByDomain: true,
+    sortBy: 'time-desc',
+    deletedItems: {
+      bookmarks: {
+        'https://local.example': { id: 'https://local.example', deletedAt: exportedAt - 500 },
+        'https://local-newer.example': { id: 'https://local-newer.example', deletedAt: exportedAt - 4000 },
+      },
+      highlights: {
+        hLocal: { id: 'hLocal', deletedAt: exportedAt - 500 },
+        hLocalNewer: { id: 'hLocalNewer', deletedAt: exportedAt - 4000 },
+      },
+    },
+  }, {
+    exportedAt: exportedAt - 1000,
+    sync: { schemaVersion: 1, source: 'git-sync' },
+  });
+  let mergedWrite;
+  const pushMerged = await pushGitSync({
+    config,
+    state: { lastRemoteSha: 'remote-sha-old' },
+    storageSnapshot: {
+      bookmarks: {
+        'https://local.example': { url: 'https://local.example', title: 'Local old', savedAt: exportedAt - 3000 },
+        'https://local-newer.example': { url: 'https://local-newer.example', title: 'Local newer', savedAt: exportedAt - 100 },
+      },
+      highlights: {
+        hLocal: { id: 'hLocal', url: 'https://local.example', text: 'local old', savedAt: exportedAt - 3000 },
+        hLocalNewer: { id: 'hLocalNewer', url: 'https://local-newer.example', text: 'local newer', savedAt: exportedAt - 100 },
+      },
+      tags: ['local'],
+      settings: { themeMode: 'dark' },
+      groupByDomain: false,
+      sortBy: 'updated-desc',
+      deletedItems: { bookmarks: {}, highlights: {} },
+    },
+    backup,
+    provider: {
+      async readFile() {
+        return { exists: true, sha: 'remote-sha-new', content: JSON.stringify(remoteMergePayload) };
+      },
+      async writeFile(configArg, write) {
+        mergedWrite = JSON.parse(write.content);
+        return { sha: 'remote-sha-merged', commitSha: 'commit-sha-merged' };
+      },
+    },
+    now: exportedAt,
+  });
+  assert.equal(pushMerged.success, true);
+  assert.equal(pushMerged.conflict, undefined);
+  assert.equal(pushMerged.merged, true);
+  assert.equal(pushMerged.state.lastRemoteSha, 'remote-sha-merged');
+  assert.equal(pushMerged.data.bookmarks['https://local.example'], undefined);
+  assert.equal(pushMerged.data.highlights.hLocal, undefined);
+  assert.equal(pushMerged.data.bookmarks['https://remote.example'].title, 'Remote new');
+  assert.equal(pushMerged.data.bookmarks['https://local-newer.example'].title, 'Local newer');
+  assert.equal(pushMerged.data.highlights.hRemote.text, 'remote new');
+  assert.equal(pushMerged.data.highlights.hLocalNewer.text, 'local newer');
+  assert.deepEqual(pushMerged.data.tags, ['local', 'remote']);
+  assert.equal(pushMerged.data.settings.themeMode, 'dark');
+  assert.equal(mergedWrite.data.bookmarks['https://local.example'], undefined);
+  assert.equal(mergedWrite.data.deletedItems.bookmarks['https://local.example'].deletedAt, exportedAt - 500);
 
   const sameRemotePayload = backup.createBackupPayload(storageSnapshot, {
     exportedAt: exportedAt - 1000,
@@ -155,7 +239,8 @@ const storageSnapshot = {
     now: exportedAt,
   });
   assert.equal(conflict.success, false);
-  assert.equal(conflict.conflict, true);
+  assert.equal(conflict.conflict, undefined);
+  assert.match(conflict.error, /不是 MarkBuddy 备份文件/);
   assert.equal(conflict.remoteSha, 'remote-sha-new');
 
   const forcePush = await pushGitSync({
@@ -165,7 +250,7 @@ const storageSnapshot = {
     backup,
     provider: {
       async readFile() {
-        return { exists: true, sha: 'remote-sha-new', content: '{}' };
+        return { exists: true, sha: 'remote-sha-new', content: JSON.stringify(staleRemotePayload) };
       },
       async writeFile(configArg, write) {
         assert.equal(write.sha, 'remote-sha-new');

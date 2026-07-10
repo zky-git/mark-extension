@@ -55,6 +55,12 @@
 
   <div class="panel-notice-host" id="panel-notice-host"></div>
 
+  <nav class="workspace-tabs" id="workspace-tabs" aria-label="主工作区">
+    <button class="workspace-tab active" type="button" data-workspace="library" aria-selected="true">摘录库</button>
+    <button class="workspace-tab" type="button" data-workspace="review" aria-selected="false">今日重温</button>
+    <button class="workspace-tab" type="button" data-workspace="data" aria-selected="false">数据资产</button>
+  </nav>
+
   <!-- Settings Panel (hidden by default) -->
   <div class="settings-panel hidden" id="settings-panel" role="region" aria-label="设置面板">
     <div class="settings-header">
@@ -120,7 +126,7 @@
                 <span class="tooltip-title"><span class="tooltip-emoji">⏰</span>SM-2 提醒节奏</span>
                 <ul class="tooltip-list">
                   <li>提醒对象是你手动加入队列的划线摘录</li>
-                  <li>每次回顾用三档反馈：暂时没用、再看看、仍然有用</li>
+                  <li>每次重温用三档反馈：不重要了、再提醒我、仍然有用</li>
                   <li>系统会根据反馈动态调整下一次提醒时间</li>
                 </ul>
               </span>
@@ -188,20 +194,10 @@
           <p class="git-sync-status" id="git-sync-status"></p>
         </div>
       </details>
-      <div class="settings-divider"></div>
-      <div class="settings-section">
-        <label class="settings-label">数据备份</label>
-        <div class="backup-actions">
-          <button class="btn-secondary backup-btn" id="backup-export-btn">导出 JSON 备份</button>
-          <button class="btn-secondary backup-btn" id="backup-import-btn">导入 JSON 备份</button>
-          <input type="file" id="backup-file-input" accept="application/json,.json" class="hidden" />
-        </div>
-        <p class="settings-help">完整备份用于恢复扩展数据；Markdown 导出用于带到笔记软件。</p>
-        <p class="backup-status" id="backup-status"></p>
-      </div>
     </div>
   </div>
 
+  <section class="workspace library-workspace" id="library-workspace" aria-label="摘录库">
   <!-- Review Banner (hidden when no due items) -->
   <div class="review-banner hidden" id="review-banner">
     <span class="review-banner-icon">🔔</span>
@@ -217,7 +213,7 @@
         type="text"
         id="search-input"
         class="search-input"
-        placeholder="搜索网页标题、划线或批注..."
+        placeholder="搜索标题、来源、摘录或备注..."
         aria-label="搜索收藏"
         autocomplete="off"
       />
@@ -249,8 +245,8 @@
   <main class="bookmark-list" id="bookmark-list" role="main" aria-label="收藏列表">
     <div class="empty-state hidden" id="empty-state">
       <div class="empty-icon">📚</div>
-      <p class="empty-title">还没有收藏</p>
-      <p class="empty-desc">在任意网页上选中文字，点击「高亮划线」开始吧！</p>
+      <p class="empty-title">还没有摘录</p>
+      <p class="empty-desc">保存为你的第一条知识片段</p>
     </div>
     <div class="empty-state hidden" id="no-results-state">
       <div class="empty-icon">🔍</div>
@@ -258,6 +254,47 @@
       <p class="empty-desc">试试其他关键词或清除过滤条件</p>
     </div>
   </main>
+  </section>
+
+  <section class="workspace data-workspace hidden" id="data-workspace" aria-label="数据资产">
+    <section class="asset-section" id="markdown-export-section" aria-labelledby="markdown-export-title">
+      <div class="asset-section-heading">
+        <h2 id="markdown-export-title">Markdown 导出</h2>
+        <p>带走可读、可编辑的摘录与备注。</p>
+      </div>
+      <div class="asset-actions">
+        <button class="btn-secondary" id="data-export-filtered-btn">导出当前结果</button>
+        <button class="btn-secondary" id="data-export-all-btn">导出全部摘录</button>
+        <button class="btn-secondary" id="copy-markdown-btn">复制 Markdown</button>
+      </div>
+      <p class="asset-status" id="data-export-status" aria-live="polite"></p>
+    </section>
+
+    <section class="asset-section" id="git-sync-asset-section" aria-labelledby="git-sync-asset-title">
+      <div class="asset-section-heading">
+        <h2 id="git-sync-asset-title">Git 仓库同步</h2>
+        <p id="git-sync-asset-summary">读取同步状态中…</p>
+      </div>
+      <div class="asset-actions">
+        <button class="btn-primary" id="git-sync-asset-push-btn">同步到仓库</button>
+        <button class="btn-secondary" id="git-sync-asset-pull-btn">从仓库恢复数据</button>
+        <button class="btn-secondary" id="git-sync-settings-btn">同步设置</button>
+      </div>
+    </section>
+
+    <section class="asset-section" id="backup-asset-section" aria-labelledby="backup-asset-title">
+      <div class="asset-section-heading">
+        <h2 id="backup-asset-title">完整备份</h2>
+        <p>用于恢复 MarkBuddy 的本地数据。</p>
+      </div>
+      <div class="asset-actions">
+        <button class="btn-secondary backup-btn" id="backup-export-btn">导出完整备份</button>
+        <button class="btn-secondary backup-btn" id="backup-import-btn">导入完整备份</button>
+        <input type="file" id="backup-file-input" accept="application/json,.json" class="hidden" />
+      </div>
+      <p class="backup-status" id="backup-status" aria-live="polite"></p>
+    </section>
+  </section>
 
   <!-- Tag Dialog (native <dialog> for focus trap + Escape key) -->
   <dialog class="tag-dialog" id="tag-dialog" aria-label="添加标签">
@@ -299,6 +336,7 @@
       <div class="review-progress-fill" id="review-progress-fill"></div>
     </div>
     <div class="review-header">
+      <span class="review-title">今日重温</span>
       <span class="review-counter" id="review-counter">0 / 0</span>
       <button class="review-exit-btn" id="review-exit-btn" title="退出回顾">✕ 退出</button>
     </div>
@@ -306,7 +344,10 @@
     <!-- Card Area -->
     <div class="review-card-area" id="review-card-area">
       <div class="review-card" id="review-card">
-        <div class="review-card-source" id="review-card-source"></div>
+        <div class="review-card-context">
+          <span class="review-card-source" id="review-source"></span>
+          <span class="review-saved-at" id="review-saved-at"></span>
+        </div>
         <div class="review-card-text" id="review-card-text"></div>
         <button class="review-reveal-note-btn hidden" id="review-reveal-note-btn">💬 查看备注</button>
         <div class="review-card-note hidden" id="review-card-note"></div>
@@ -320,8 +361,8 @@
 
     <!-- Score Buttons -->
     <div class="review-score-btns" id="review-score-btns">
-      <button class="review-score-btn forgot" id="score-forgot">暂时没用</button>
-      <button class="review-score-btn fuzzy" id="score-fuzzy">再看看</button>
+      <button class="review-score-btn forgot" id="score-forgot">不重要了</button>
+      <button class="review-score-btn fuzzy" id="score-fuzzy">再提醒我</button>
       <button class="review-score-btn remembered" id="score-remembered">仍然有用 ✓</button>
     </div>
 

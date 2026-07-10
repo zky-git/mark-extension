@@ -10,14 +10,6 @@
     return new Date(value).toISOString().slice(0, 10);
   }
 
-  function getDomain(url) {
-    try {
-      return new URL(url).hostname;
-    } catch {
-      return 'unknown-source';
-    }
-  }
-
   function sanitizeFilenamePart(value) {
     return String(value || 'markbuddy-export')
       .toLowerCase()
@@ -46,56 +38,41 @@
     return (Array.isArray(tags) ? tags : [])
       .map(inlineText)
       .filter(Boolean)
-      .join(', ');
+      .map(tag => tag.startsWith('#') ? tag : `#${tag}`)
+      .join(' ');
   }
 
   function pushNote(lines, note) {
     const text = String(note || '').trim();
     if (!text) return;
-    if (text.includes('\n') || text.includes('\r')) {
-      lines.push('Note:', '', quoteMarkdown(text), '');
-    } else {
-      lines.push(`Note: ${inlineText(text)}`, '');
-    }
+    lines.push('笔记：', '');
+    lines.push(text.includes('\n') || text.includes('\r') ? quoteMarkdown(text) : inlineText(text));
+    lines.push('');
   }
 
   function formatBookmarksAsMarkdown(bookmarks, options = {}) {
     const list = Array.isArray(bookmarks) ? bookmarks.filter(Boolean) : [];
     if (list.length === 0) return '';
 
-    const title = headingText(options.title, 'MarkBuddy Export');
-    const exportedAt = formatDate(options.exportedAt || Date.now());
-    const lines = [`# ${title}`, '', `Exported: ${exportedAt}`, ''];
-    const groups = new Map();
+    const lines = [];
 
     list.forEach(bookmark => {
-      const domain = getDomain(bookmark.url);
-      if (!groups.has(domain)) groups.set(domain, []);
-      groups.get(domain).push(bookmark);
-    });
+      lines.push(`## ${headingText(bookmark.title || bookmark.url, 'Untitled Page')}`, '');
+      if (bookmark.url) lines.push(`- Source: ${bookmark.url}`);
+      if (bookmark.savedAt) lines.push(`- Saved: ${formatDate(bookmark.savedAt)}`);
+      const tags = formatTags(bookmark.tags);
+      if (tags) lines.push(`- Tags: ${tags}`);
+      lines.push('');
 
-    groups.forEach((items, domain) => {
-      lines.push(`## ${domain}`, '');
-      items.forEach(bookmark => {
-        lines.push(`### ${headingText(bookmark.title || bookmark.url, 'Untitled Page')}`, '');
-        if (bookmark.url) lines.push(`- URL: ${bookmark.url}`);
-        if (bookmark.savedAt) lines.push(`- Saved: ${formatDate(bookmark.savedAt)}`);
-        const tags = formatTags(bookmark.tags);
-        if (tags) lines.push(`- Tags: ${tags}`);
-        lines.push('', '#### Highlights', '');
+      const highlights = Array.isArray(bookmark.highlights) ? bookmark.highlights : [];
+      if (highlights.length === 0) {
+        lines.push('_暂无摘录_', '');
+        return;
+      }
 
-        const highlights = Array.isArray(bookmark.highlights) ? bookmark.highlights : [];
-        if (highlights.length === 0) {
-          lines.push('_No highlights saved for this page._', '');
-        } else {
-          highlights.forEach((highlight, index) => {
-            lines.push(`##### ${index + 1}. Highlight`, '');
-            lines.push(quoteMarkdown(highlight.text || ''));
-            lines.push('');
-            pushNote(lines, highlight.note);
-            if (bookmark.url) lines.push(`Source: ${bookmark.url}`, '');
-          });
-        }
+      highlights.forEach(highlight => {
+        lines.push(quoteMarkdown(highlight.text || ''), '');
+        pushNote(lines, highlight.note);
       });
     });
 

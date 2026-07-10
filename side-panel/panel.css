@@ -113,6 +113,14 @@ body {
   flex-shrink: 0;
 }
 
+.preview-mode-notice {
+  padding: 5px 12px;
+  background: var(--accent-subtle);
+  color: var(--accent);
+  font-size: 11px;
+  text-align: center;
+}
+
 .workspace-tab {
   border: 0;
   border-radius: 6px;
@@ -1057,6 +1065,17 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
+  position: relative;
+}
+
+.sort-selector-wrap::after {
+  content: '⌄';
+  position: absolute;
+  right: 8px;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  pointer-events: none;
 }
 
 .sort-label {
@@ -1065,19 +1084,26 @@ body {
 }
 
 .sort-select {
+  min-width: 96px;
+  height: 28px;
+  appearance: none;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
   font-size: 11px;
-  color: var(--text-main);
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-medium);
-  border-radius: 4px;
-  padding: 1px 4px;
+  padding: 0 26px 0 9px;
   cursor: pointer;
   outline: none;
-  transition: border-color 0.15s ease;
+  transition: border-color var(--transition), box-shadow var(--transition), color var(--transition);
 }
 
 .sort-select:focus {
-  border-color: var(--primary-color);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+  color: var(--text-primary);
 }
 
 /* ─── Bookmark List ──────────────────────────────────────────────────────────── */
@@ -1925,6 +1951,11 @@ body {
   align-items: center;
   justify-content: center;
   padding: 48px 24px;
+  margin: 20px 2px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
   text-align: center;
   gap: 8px;
 }

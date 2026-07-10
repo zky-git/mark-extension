@@ -61,6 +61,8 @@
     <button class="workspace-tab" type="button" data-workspace="data" aria-selected="false">数据资产</button>
   </nav>
 
+  <p class="preview-mode-notice hidden" id="preview-mode-notice" role="status">预览数据：在 Chrome 扩展中会显示你的真实摘录。</p>
+
   <!-- Settings Panel (hidden by default) -->
   <div class="settings-panel hidden" id="settings-panel" role="region" aria-label="设置面板">
     <div class="settings-header">
@@ -245,8 +247,8 @@
   <main class="bookmark-list" id="bookmark-list" role="main" aria-label="收藏列表">
     <div class="empty-state hidden" id="empty-state">
       <div class="empty-icon">📚</div>
-      <p class="empty-title">还没有摘录</p>
-      <p class="empty-desc">保存为你的第一条知识片段</p>
+      <p class="empty-title">摘录库还是空的</p>
+      <p class="empty-desc">在网页中选中一段文字并高亮，把它保存为第一条知识片段。</p>
     </div>
     <div class="empty-state hidden" id="no-results-state">
       <div class="empty-icon">🔍</div>

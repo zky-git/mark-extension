@@ -594,5 +594,12 @@ assert.match(html, /默认高亮颜色/, 'settings should keep highlight color p
 assert.match(html, /按域名分组/, 'settings should keep domain grouping preference');
 assert.match(html, /唤醒收藏/, 'settings should keep review preference');
 assert.doesNotMatch(html, /<label class="settings-label">数据备份<\/label>/, 'backup should no longer be settings-only primary section');
+assert.match(html, /id="preview-mode-notice"/, 'static previews should disclose their demo data');
+assert.match(html, /预览数据/, 'static preview notice should be user-facing');
+assert.match(panelJs, /function isExtensionRuntimeAvailable\(\)/, 'panel should detect whether Chrome extension APIs are available');
+assert.match(panelJs, /function loadPreviewData\(\)/, 'panel should render demo data outside the extension runtime');
+assert.match(panelJs, /if \(!isExtensionRuntimeAvailable\(\)\)/, 'panel should avoid extension API calls in static preview mode');
+assert.match(panelCss, /\.sort-select\s*\{[^}]*appearance:\s*none/, 'sort control should use a custom compact appearance');
+assert.match(panelCss, /\.empty-state\s*\{[^}]*border:\s*1px solid var\(--border\)/, 'empty state should read as a focused first-action panel');
 
 console.log('panel structure tests passed');

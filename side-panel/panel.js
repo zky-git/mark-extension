@@ -25,18 +25,27 @@
 
   // ─── SW Connection to Track Open State ────────────────────────────────────────
 
-  try {
-    chrome.windows.getCurrent().then((currentWindow) => {
-      const port = chrome.runtime.connect({ name: 'markbuddy-sidepanel' });
-      port.postMessage({ type: 'INIT', windowId: currentWindow.id });
-    });
-  } catch (err) {
-    console.warn('[MarkBuddy Panel] Port connection failed:', err);
+  function isExtensionRuntimeAvailable() {
+    return typeof chrome !== 'undefined' && Boolean(chrome.runtime?.id && chrome.storage?.local);
+  }
+
+  if (isExtensionRuntimeAvailable()) {
+    try {
+      chrome.windows.getCurrent().then((currentWindow) => {
+        const port = chrome.runtime.connect({ name: 'markbuddy-sidepanel' });
+        port.postMessage({ type: 'INIT', windowId: currentWindow.id });
+      });
+    } catch (err) {
+      console.warn('[MarkBuddy Panel] Port connection failed:', err);
+    }
   }
 
   // ─── Messaging ────────────────────────────────────────────────────────────────
 
   function sendMessage(type, payload = {}) {
+    if (!isExtensionRuntimeAvailable()) {
+      return Promise.resolve(getPreviewResponse(type, payload));
+    }
     return new Promise((resolve) => {
       chrome.runtime.sendMessage({ type, payload }, (resp) => {
         if (chrome.runtime.lastError) {
@@ -47,6 +56,17 @@
         }
       });
     });
+  }
+
+  function getPreviewResponse(type) {
+    const previewHighlights = allBookmarks.flatMap(bookmark =>
+      (bookmark.highlights || []).map(highlight => ({ ...highlight, url: bookmark.url, savedAt: highlight.savedAt || bookmark.savedAt }))
+    );
+    if (type === 'GET_ALL_BOOKMARKS') return allBookmarks;
+    if (type === 'GET_ALL_TAGS') return allTags;
+    if (type === 'GET_SETTINGS') return settings;
+    if (type === 'GET_DUE_REVIEWS') return previewHighlights.filter(highlight => highlight.review?.enabled);
+    return { success: true };
   }
 
   function applyThemeMode(themeMode) {
@@ -105,6 +125,11 @@
   }
 
   async function openBookmarkUrl(url) {
+    if (!isExtensionRuntimeAvailable()) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+      return true;
+    }
+
     try {
       new URL(url);
     } catch {
@@ -125,6 +150,11 @@
   // ─── Data Loading ─────────────────────────────────────────────────────────────
 
   async function loadAll() {
+    if (!isExtensionRuntimeAvailable()) {
+      loadPreviewData();
+      return;
+    }
+
     const [bookmarksResp, tagsResp, settingsResp, groupResp, sortResp] = await Promise.all([
       sendMessage('GET_ALL_BOOKMARKS'),
       sendMessage('GET_ALL_TAGS'),
@@ -167,6 +197,40 @@
     updateStats();
 
     // Refresh review banner count
+    updateReviewBanner();
+  }
+
+  function loadPreviewData() {
+    const now = Date.now();
+    allBookmarks = [{
+      url: 'https://www.runoob.com/python3/python3-dictionary.html',
+      title: 'Python3 字典 | 菜鸟教程',
+      savedAt: now - 2 * 24 * 60 * 60 * 1000,
+      tags: ['Python', '基础语法'],
+      highlights: [
+        {
+          id: 'preview-dictionary-highlight',
+          text: '删除字典元素可使用 del 语句，也可以使用 pop() 获取并删除指定键。',
+          note: '和列表的删除方式对照理解。',
+          color: '#FFD700',
+          review: { enabled: true, sm2: { nextReviewAt: 0 } },
+        },
+      ],
+    }];
+    allTags = ['Python', '基础语法'];
+    groupByDomain = true;
+    sortBy = 'time-desc';
+
+    document.documentElement.dataset.preview = 'true';
+    document.getElementById('preview-mode-notice')?.classList.remove('hidden');
+    document.getElementById('group-by-domain-checkbox').checked = groupByDomain;
+    document.getElementById('sort-select').value = sortBy;
+    document.getElementById('theme-mode-select').value = 'system';
+    document.getElementById('review-enabled-checkbox').checked = true;
+    renderTagsBar();
+    renderColorGrid();
+    renderList();
+    updateStats();
     updateReviewBanner();
   }
 
@@ -1405,16 +1469,20 @@
   });
 
   // Listen for storage changes (e.g. highlight added from content script)
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && (changes.bookmarks || changes.highlights || changes.tags || changes.settings)) {
-      loadAll();
-    }
-  });
+  if (isExtensionRuntimeAvailable()) {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === 'local' && (changes.bookmarks || changes.highlights || changes.tags || changes.settings)) {
+        loadAll();
+      }
+    });
+  }
 
   // Group-by-domain switch
   document.getElementById('group-by-domain-checkbox').addEventListener('change', async (e) => {
     groupByDomain = e.target.checked;
-    await chrome.storage.local.set({ groupByDomain }).catch(() => {});
+    if (isExtensionRuntimeAvailable()) {
+      await chrome.storage.local.set({ groupByDomain }).catch(() => {});
+    }
     renderList();
   });
 
@@ -1451,7 +1519,9 @@
   if (sortSelect) {
     sortSelect.addEventListener('change', async (e) => {
       sortBy = e.target.value;
-      await chrome.storage.local.set({ sortBy }).catch(() => {});
+      if (isExtensionRuntimeAvailable()) {
+        await chrome.storage.local.set({ sortBy }).catch(() => {});
+      }
       renderList();
     });
   }

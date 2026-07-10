@@ -1268,55 +1268,6 @@ body {
   margin-bottom: 0;
 }
 
-.highlight-preview-list {
-  display: grid;
-  gap: 6px;
-  padding: 0 12px 10px;
-}
-
-.highlight-preview {
-  display: grid;
-  grid-template-columns: 3px minmax(0, 1fr);
-  column-gap: 8px;
-  padding: 7px 8px;
-  background: var(--bg-surface);
-  border-radius: 6px;
-}
-
-.highlight-preview-marker {
-  grid-row: 1 / span 2;
-  border-radius: 999px;
-}
-
-.highlight-preview-text {
-  color: var(--text-primary);
-  font-size: 12px;
-  line-height: 1.45;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.highlight-preview-note {
-  margin-top: 3px;
-  color: var(--text-secondary);
-  font-size: 11px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.highlight-preview-more {
-  justify-self: start;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--accent);
-  cursor: pointer;
-  font: inherit;
-  font-size: 11px;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .bookmark-card {
     transition-duration: 0.01ms;
@@ -1477,37 +1428,9 @@ body {
 .card-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   padding: 0 12px 10px;
   gap: 8px;
-}
-
-.card-expand-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 11.5px;
-  font-family: inherit;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 0;
-  transition: color var(--transition);
-}
-
-.card-expand-btn:hover {
-  color: var(--accent);
-}
-
-.expand-arrow {
-  display: inline-block;
-  transition: transform 0.18s ease;
-  font-size: 10px;
-}
-
-.expanded .expand-arrow {
-  transform: rotate(180deg);
 }
 
 .card-actions {
@@ -1673,14 +1596,6 @@ body {
 
 .highlights-list {
   border-top: 1px solid var(--border);
-  overflow: hidden;
-  max-height: 0;
-  /* Smooth expand/collapse */
-  transition: max-height 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.highlights-list.open {
-  max-height: 9999px;
 }
 
 .highlight-wrapper {

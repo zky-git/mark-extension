@@ -206,6 +206,9 @@ vm.runInNewContext(source, context, { filename: 'service-worker.js' });
   assert.equal(storageData.highlights.legacyTagOnly.review.enabled, false);
   assert.equal(context.chrome._badgeUpdates.at(-2).update.text, '1');
 
+  await context.updateReviewResult('reviewEnabled', 1);
+  assert.equal(storageData.highlights.reviewEnabled.review.enabled, true);
+
   console.log('service-worker review tests passed');
 })().catch((err) => {
   console.error(err);

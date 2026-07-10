@@ -102,6 +102,108 @@ body {
 
 .hidden { display: none !important; }
 
+/* ─── Workspaces ───────────────────────────────────────────────────────────── */
+
+.workspace-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 8px 12px 6px;
+  background: var(--bg);
+  flex-shrink: 0;
+}
+
+.preview-mode-notice {
+  padding: 5px 12px;
+  background: var(--accent-subtle);
+  color: var(--accent);
+  font-size: 11px;
+  text-align: center;
+}
+
+.workspace-tab {
+  border: 0;
+  border-radius: 6px;
+  padding: 6px 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.workspace-tab:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.workspace-tab.active {
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+.workspace {
+  min-height: 0;
+}
+
+.library-workspace {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.data-workspace {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 12px;
+}
+
+.asset-section {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.asset-section:first-child {
+  padding-top: 0;
+}
+
+.asset-section:last-child {
+  border-bottom: 0;
+}
+
+.asset-section-heading h2 {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.asset-section-heading p {
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.asset-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.asset-actions button:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.asset-status {
+  min-height: 16px;
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
 /* ─── Header ─────────────────────────────────────────────────────────────────── */
 
 .header {
@@ -963,6 +1065,17 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
+  position: relative;
+}
+
+.sort-selector-wrap::after {
+  content: '⌄';
+  position: absolute;
+  right: 8px;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  pointer-events: none;
 }
 
 .sort-label {
@@ -971,19 +1084,26 @@ body {
 }
 
 .sort-select {
+  min-width: 96px;
+  height: 28px;
+  appearance: none;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
   font-size: 11px;
-  color: var(--text-main);
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-medium);
-  border-radius: 4px;
-  padding: 1px 4px;
+  padding: 0 26px 0 9px;
   cursor: pointer;
   outline: none;
-  transition: border-color 0.15s ease;
+  transition: border-color var(--transition), box-shadow var(--transition), color var(--transition);
 }
 
 .sort-select:focus {
-  border-color: var(--primary-color);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+  color: var(--text-primary);
 }
 
 /* ─── Bookmark List ──────────────────────────────────────────────────────────── */
@@ -1136,6 +1256,65 @@ body {
 .bookmark-card:hover {
   border-color: var(--border-strong);
   box-shadow: var(--shadow-md);
+}
+
+.knowledge-card .card-title {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.knowledge-card-meta {
+  margin-bottom: 0;
+}
+
+.highlight-preview-list {
+  display: grid;
+  gap: 6px;
+  padding: 0 12px 10px;
+}
+
+.highlight-preview {
+  display: grid;
+  grid-template-columns: 3px minmax(0, 1fr);
+  column-gap: 8px;
+  padding: 7px 8px;
+  background: var(--bg-surface);
+  border-radius: 6px;
+}
+
+.highlight-preview-marker {
+  grid-row: 1 / span 2;
+  border-radius: 999px;
+}
+
+.highlight-preview-text {
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.highlight-preview-note {
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.highlight-preview-more {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1772,6 +1951,11 @@ body {
   align-items: center;
   justify-content: center;
   padding: 48px 24px;
+  margin: 20px 2px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
   text-align: center;
   gap: 8px;
 }

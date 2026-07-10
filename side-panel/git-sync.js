@@ -10,6 +10,7 @@
   };
   const fixedSyncPath = 'markbuddy/data.json';
   let quickSyncResetTimer = null;
+  let currentConfig = {};
 
   function $(id) {
     return document.getElementById(id);
@@ -53,6 +54,8 @@
       'git-sync-push-btn',
       'git-sync-pull-btn',
       'git-sync-clear-btn',
+      'git-sync-asset-push-btn',
+      'git-sync-asset-pull-btn',
     ].forEach(id => {
       const btn = $(id);
       if (btn) btn.disabled = isBusy;
@@ -115,6 +118,18 @@
     meta.classList.toggle('hidden', !text);
   }
 
+  function updateAssetSummary(config = currentConfig, state = {}) {
+    const summary = $('git-sync-asset-summary');
+    if (!summary) return;
+    if (!isGitSyncConfigUsable(config)) {
+      summary.textContent = '把摘录同步到你自己的 GitHub 仓库，保留版本历史。';
+      return;
+    }
+    const repo = `${config.owner}/${config.repo}`;
+    const stateText = describeState(state);
+    summary.textContent = stateText ? `已连接 ${repo}；${stateText}` : `已连接 ${repo}`;
+  }
+
   async function send(type, payload) {
     const api = panelApi();
     if (!api.sendMessage) return null;
@@ -129,8 +144,10 @@
       return;
     }
     applyConfig(resp.config);
+    currentConfig = resp.config || {};
     toggleQuickSync(resp.config);
     updateLastSuccessMeta(resp.state);
+    updateAssetSummary(resp.config, resp.state);
     setStatus(message || describeState(resp.state) || 'Git 同步未配置。', message ? 'success' : 'muted');
   }
 
@@ -141,7 +158,9 @@
       return false;
     }
     applyConfig(resp.config);
+    currentConfig = resp.config || {};
     toggleQuickSync(resp.config);
+    updateAssetSummary(resp.config);
     setStatus('Git 同步配置已保存。', 'success');
     return true;
   }
@@ -183,6 +202,7 @@
       return resp;
     }
     updateLastSuccessMeta(resp.state);
+    updateAssetSummary(undefined, resp.state);
     setStatus(`${resp.merged ? '已合并并同步到 Git' : '已上传到 Git'}${resp.commitSha ? `，commit ${resp.commitSha.slice(0, 7)}` : ''}。`, 'success');
     setQuickSyncState('success');
     return resp;
@@ -234,6 +254,7 @@
     }
     await panelApi().reload?.();
     updateLastSuccessMeta(resp.state);
+    updateAssetSummary(undefined, resp.state);
     setStatus('已从 Git 恢复，列表已刷新。', 'success');
     setQuickSyncState('success');
   }
@@ -247,8 +268,10 @@
       return;
     }
     applyConfig({});
+    currentConfig = {};
     toggleQuickSync({});
     updateLastSuccessMeta({});
+    updateAssetSummary({});
     setStatus('Git 同步配置已清除。', 'success');
   }
 
@@ -276,6 +299,13 @@
   bind('git-sync-pull-btn', pullFromGit);
   bind('git-sync-clear-btn', clearConfig);
   bind('git-sync-quick-btn', () => quickSyncToGit(false));
+  bind('git-sync-asset-push-btn', () => pushToGit(false));
+  bind('git-sync-asset-pull-btn', pullFromGit);
+
+  $('git-sync-settings-btn')?.addEventListener('click', () => {
+    $('settings-panel')?.classList.remove('hidden');
+    $('git-sync-section').open = true;
+  });
 
   refreshStatus();
 })();

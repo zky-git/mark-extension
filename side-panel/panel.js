@@ -15,6 +15,7 @@
   let sortBy = 'time-desc'; // default: newest first
   let panelNoticeTimer = null;
   let expandedBookmarkUrls = new Set();
+  let activeWorkspace = 'library';
 
   // Review state
   let reviewQueue = [];       // Due highlights for today
@@ -24,18 +25,27 @@
 
   // ─── SW Connection to Track Open State ────────────────────────────────────────
 
-  try {
-    chrome.windows.getCurrent().then((currentWindow) => {
-      const port = chrome.runtime.connect({ name: 'markbuddy-sidepanel' });
-      port.postMessage({ type: 'INIT', windowId: currentWindow.id });
-    });
-  } catch (err) {
-    console.warn('[MarkBuddy Panel] Port connection failed:', err);
+  function isExtensionRuntimeAvailable() {
+    return typeof chrome !== 'undefined' && Boolean(chrome.runtime?.id && chrome.storage?.local);
+  }
+
+  if (isExtensionRuntimeAvailable()) {
+    try {
+      chrome.windows.getCurrent().then((currentWindow) => {
+        const port = chrome.runtime.connect({ name: 'markbuddy-sidepanel' });
+        port.postMessage({ type: 'INIT', windowId: currentWindow.id });
+      });
+    } catch (err) {
+      console.warn('[MarkBuddy Panel] Port connection failed:', err);
+    }
   }
 
   // ─── Messaging ────────────────────────────────────────────────────────────────
 
   function sendMessage(type, payload = {}) {
+    if (!isExtensionRuntimeAvailable()) {
+      return Promise.resolve(getPreviewResponse(type, payload));
+    }
     return new Promise((resolve) => {
       chrome.runtime.sendMessage({ type, payload }, (resp) => {
         if (chrome.runtime.lastError) {
@@ -46,6 +56,17 @@
         }
       });
     });
+  }
+
+  function getPreviewResponse(type) {
+    const previewHighlights = allBookmarks.flatMap(bookmark =>
+      (bookmark.highlights || []).map(highlight => ({ ...highlight, url: bookmark.url, savedAt: highlight.savedAt || bookmark.savedAt }))
+    );
+    if (type === 'GET_ALL_BOOKMARKS') return allBookmarks;
+    if (type === 'GET_ALL_TAGS') return allTags;
+    if (type === 'GET_SETTINGS') return settings;
+    if (type === 'GET_DUE_REVIEWS') return previewHighlights.filter(highlight => highlight.review?.enabled);
+    return { success: true };
   }
 
   function applyThemeMode(themeMode) {
@@ -89,7 +110,26 @@
     }, 3200);
   }
 
+  function setActiveWorkspace(workspace) {
+    activeWorkspace = workspace;
+    const library = document.getElementById('library-workspace');
+    const data = document.getElementById('data-workspace');
+
+    library?.classList.toggle('hidden', workspace !== 'library');
+    data?.classList.toggle('hidden', workspace !== 'data');
+    document.querySelectorAll('[data-workspace]').forEach(tab => {
+      const isActive = tab.dataset.workspace === workspace;
+      tab.classList.toggle('active', isActive);
+      tab.setAttribute('aria-selected', String(isActive));
+    });
+  }
+
   async function openBookmarkUrl(url) {
+    if (!isExtensionRuntimeAvailable()) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+      return true;
+    }
+
     try {
       new URL(url);
     } catch {
@@ -110,6 +150,11 @@
   // ─── Data Loading ─────────────────────────────────────────────────────────────
 
   async function loadAll() {
+    if (!isExtensionRuntimeAvailable()) {
+      loadPreviewData();
+      return;
+    }
+
     const [bookmarksResp, tagsResp, settingsResp, groupResp, sortResp] = await Promise.all([
       sendMessage('GET_ALL_BOOKMARKS'),
       sendMessage('GET_ALL_TAGS'),
@@ -152,6 +197,40 @@
     updateStats();
 
     // Refresh review banner count
+    updateReviewBanner();
+  }
+
+  function loadPreviewData() {
+    const now = Date.now();
+    allBookmarks = [{
+      url: 'https://www.runoob.com/python3/python3-dictionary.html',
+      title: 'Python3 字典 | 菜鸟教程',
+      savedAt: now - 2 * 24 * 60 * 60 * 1000,
+      tags: ['Python', '基础语法'],
+      highlights: [
+        {
+          id: 'preview-dictionary-highlight',
+          text: '删除字典元素可使用 del 语句，也可以使用 pop() 获取并删除指定键。',
+          note: '和列表的删除方式对照理解。',
+          color: '#FFD700',
+          review: { enabled: true, sm2: { nextReviewAt: 0 } },
+        },
+      ],
+    }];
+    allTags = ['Python', '基础语法'];
+    groupByDomain = true;
+    sortBy = 'time-desc';
+
+    document.documentElement.dataset.preview = 'true';
+    document.getElementById('preview-mode-notice')?.classList.remove('hidden');
+    document.getElementById('group-by-domain-checkbox').checked = groupByDomain;
+    document.getElementById('sort-select').value = sortBy;
+    document.getElementById('theme-mode-select').value = 'system';
+    document.getElementById('review-enabled-checkbox').checked = true;
+    renderTagsBar();
+    renderColorGrid();
+    renderList();
+    updateStats();
     updateReviewBanner();
   }
 
@@ -455,7 +534,7 @@
     } else {
       statsBar.classList.remove('hidden');
       if (shown === total) {
-        statsText.textContent = `${total} 个网页 · ${hlCount} 条划线`;
+        statsText.textContent = `${total} 个来源 · ${hlCount} 条摘录`;
       } else {
         statsText.textContent = `显示 ${shown} / ${total} 个网页`;
       }
@@ -504,7 +583,42 @@
     status.dataset.tone = tone;
   }
 
+  function setDataExportStatus(message, tone = 'muted') {
+    const status = document.getElementById('data-export-status');
+    if (!status) return;
+    status.textContent = message || '';
+    status.dataset.tone = tone;
+  }
+
+  function formatMarkdownForScope(scope) {
+    const formatter = getExportFormatter();
+    if (!formatter) return { error: '导出模块未加载，请刷新侧边栏后重试。' };
+
+    const bookmarks = scope === 'filtered' ? getCurrentExportScopeBookmarks() : allBookmarks;
+    if (!bookmarks.length) return { error: '当前没有可导出的摘录。' };
+
+    const exportedAt = Date.now();
+    const title = getExportTitle(scope, bookmarks);
+    const markdown = formatter.formatBookmarksAsMarkdown(bookmarks, { title, exportedAt });
+    if (!markdown) return { error: '当前没有可导出的内容。' };
+    return { bookmarks, exportedAt, title, markdown, formatter };
+  }
+
   async function exportBookmarks(scope, bookmark = null) {
+    if (!bookmark) {
+      const result = formatMarkdownForScope(scope);
+      if (result.error) {
+        setExportStatus(result.error, 'danger');
+        setDataExportStatus(result.error, 'danger');
+        return;
+      }
+      const filename = result.formatter.buildExportFilename(result.title, result.exportedAt);
+      downloadTextFile(result.markdown, filename, 'text/markdown;charset=utf-8');
+      setExportStatus(`已准备下载：${filename}`, 'success');
+      setDataExportStatus(`已准备下载：${filename}`, 'success');
+      return;
+    }
+
     const formatter = getExportFormatter();
     if (!formatter) {
       setExportStatus('导出模块未加载，请刷新侧边栏后重试。', 'danger');
@@ -528,6 +642,23 @@
     const filename = formatter.buildExportFilename(title, exportedAt);
     downloadTextFile(markdown, filename, 'text/markdown;charset=utf-8');
     setExportStatus(`已准备下载：${filename}`, 'success');
+  }
+
+  async function copyMarkdown(scope = 'all') {
+    const result = formatMarkdownForScope(scope);
+    if (result.error) {
+      setDataExportStatus(result.error, 'danger');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(result.markdown);
+      setDataExportStatus('Markdown 已复制', 'success');
+      showPanelNotice('Markdown 已复制', 'success');
+    } catch (err) {
+      console.warn('[MarkBuddy Panel] Failed to copy Markdown:', err);
+      setDataExportStatus('复制失败，请改用下载', 'danger');
+    }
   }
 
   function setBackupStatus(message, tone = 'muted') {
@@ -603,7 +734,7 @@
 
   function buildBookmarkCard(bm) {
     const card = document.createElement('div');
-    card.className = 'bookmark-card';
+    card.className = 'bookmark-card knowledge-card';
     card.dataset.url = bm.url;
 
     // ── Header row ──
@@ -635,7 +766,7 @@
     info.appendChild(title);
 
     const meta = document.createElement('div');
-    meta.className = 'card-meta';
+    meta.className = 'card-meta knowledge-card-meta';
 
     const urlSpan = document.createElement('span');
     urlSpan.className = 'card-url';
@@ -724,15 +855,49 @@
 
     card.appendChild(tagsRow);
 
-    // ── Highlights section ──
+    // ── Excerpt preview ──
     const highlights = bm.highlights || [];
 
+    const previewList = document.createElement('div');
+    previewList.className = 'highlight-preview-list';
+    highlights.slice(0, 3).forEach(h => {
+      const preview = document.createElement('div');
+      preview.className = 'highlight-preview';
+
+      const marker = document.createElement('span');
+      marker.className = 'highlight-preview-marker';
+      marker.style.backgroundColor = h.color || '#FFD700';
+      preview.appendChild(marker);
+
+      const excerpt = document.createElement('span');
+      excerpt.className = 'highlight-preview-text';
+      excerpt.textContent = h.text || '';
+      preview.appendChild(excerpt);
+
+      if (h.note) {
+        const note = document.createElement('span');
+        note.className = 'highlight-preview-note';
+        note.textContent = `备注：${h.note}`;
+        preview.appendChild(note);
+      }
+      previewList.appendChild(preview);
+    });
+
+    if (highlights.length > 3) {
+      const more = document.createElement('button');
+      more.className = 'highlight-preview-more';
+      more.type = 'button';
+      more.textContent = `还有 ${highlights.length - 3} 条摘录`;
+      previewList.appendChild(more);
+    }
+    card.appendChild(previewList);
+
     const footer = document.createElement('div');
-    footer.className = 'card-footer';
+    footer.className = 'card-footer knowledge-actions';
 
     const expandBtn = document.createElement('button');
     expandBtn.className = 'card-expand-btn';
-    expandBtn.innerHTML = `✏️ ${highlights.length} 条想法 / 划线 <span class="expand-arrow">▼</span>`;
+    expandBtn.innerHTML = `查看 ${highlights.length} 条摘录 <span class="expand-arrow">▼</span>`;
     if (highlights.length === 0) {
       expandBtn.style.color = 'var(--text-muted)';
       expandBtn.style.cursor = 'default';
@@ -776,6 +941,12 @@
         } else {
           expandedBookmarkUrls.delete(bm.url);
         }
+      });
+
+      previewList.querySelector('.highlight-preview-more')?.addEventListener('click', () => {
+        hlList.classList.add('open');
+        expandBtn.classList.add('expanded');
+        expandedBookmarkUrls.add(bm.url);
       });
 
       // Auto-expand if search matches a highlight or its note
@@ -851,13 +1022,15 @@
 
     if (isReviewFeatureEnabled()) {
       const inReview = h.review?.enabled === true;
+      const reviewDue = inReview && (h.review?.sm2?.nextReviewAt || 0) <= Date.now();
       const reviewBtn = document.createElement('button');
       reviewBtn.className = 'highlight-review-btn' + (inReview ? ' active' : '');
-      reviewBtn.title = inReview ? '不再提醒这条划线' : '提醒我再看这条划线';
-      reviewBtn.setAttribute('aria-label', inReview ? '不再提醒这条划线' : '提醒我再看这条划线');
-      reviewBtn.textContent = inReview ? '不再提醒' : '提醒我再看';
+      reviewBtn.title = inReview ? '管理这条摘录的重温提醒' : '将这条摘录加入重温';
+      reviewBtn.setAttribute('aria-label', inReview ? '管理这条摘录的重温提醒' : '将这条摘录加入重温');
+      reviewBtn.textContent = reviewDue ? '今天该看' : (inReview ? '已加入重温' : '稍后重温');
       reviewBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
+        if (inReview && !await showCustomConfirm('确定不再重温这条摘录吗？', '停止重温')) return;
         await sendMessage('UPDATE_HIGHLIGHT_REVIEW', { id: h.id, enabled: !inReview });
         await loadAll();
       });
@@ -1176,6 +1349,16 @@
     panel.classList.add('hidden');
   });
 
+  document.querySelectorAll('[data-workspace]').forEach(tab => {
+    tab.addEventListener('click', () => {
+      if (tab.dataset.workspace === 'review') {
+        startReviewMode();
+        return;
+      }
+      setActiveWorkspace(tab.dataset.workspace);
+    });
+  });
+
   // Markdown export
   document.getElementById('export-toggle-btn').addEventListener('click', () => {
     refreshExportDialogText();
@@ -1199,6 +1382,18 @@
 
   document.getElementById('export-all-btn').addEventListener('click', () => {
     exportBookmarks('all');
+  });
+
+  document.getElementById('data-export-filtered-btn').addEventListener('click', () => {
+    exportBookmarks('filtered');
+  });
+
+  document.getElementById('data-export-all-btn').addEventListener('click', () => {
+    exportBookmarks('all');
+  });
+
+  document.getElementById('copy-markdown-btn').addEventListener('click', () => {
+    copyMarkdown('all');
   });
 
   // JSON backup / restore
@@ -1274,16 +1469,20 @@
   });
 
   // Listen for storage changes (e.g. highlight added from content script)
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && (changes.bookmarks || changes.highlights || changes.tags || changes.settings)) {
-      loadAll();
-    }
-  });
+  if (isExtensionRuntimeAvailable()) {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === 'local' && (changes.bookmarks || changes.highlights || changes.tags || changes.settings)) {
+        loadAll();
+      }
+    });
+  }
 
   // Group-by-domain switch
   document.getElementById('group-by-domain-checkbox').addEventListener('change', async (e) => {
     groupByDomain = e.target.checked;
-    await chrome.storage.local.set({ groupByDomain }).catch(() => {});
+    if (isExtensionRuntimeAvailable()) {
+      await chrome.storage.local.set({ groupByDomain }).catch(() => {});
+    }
     renderList();
   });
 
@@ -1320,7 +1519,9 @@
   if (sortSelect) {
     sortSelect.addEventListener('change', async (e) => {
       sortBy = e.target.value;
-      await chrome.storage.local.set({ sortBy }).catch(() => {});
+      if (isExtensionRuntimeAvailable()) {
+        await chrome.storage.local.set({ sortBy }).catch(() => {});
+      }
       renderList();
     });
   }
@@ -1348,6 +1549,7 @@
 
   function showMainView() {
     document.getElementById('review-mode').classList.add('hidden');
+    setActiveWorkspace('library');
   }
 
   async function startReviewMode() {
@@ -1375,6 +1577,7 @@
     document.getElementById('review-jump-wrap').style.display = '';
     document.getElementById('review-score-btns').style.display = '';
     document.getElementById('review-mode').classList.remove('hidden');
+    setActiveWorkspace('review');
 
     renderReviewCard();
   }
@@ -1394,7 +1597,10 @@
     // Source domain
     let domain = current.url || '';
     try { domain = new URL(current.url).hostname; } catch {}
-    document.getElementById('review-card-source').textContent = domain;
+    document.getElementById('review-source').textContent = domain;
+    document.getElementById('review-saved-at').textContent = current.savedAt
+      ? `保存于 ${new Date(current.savedAt).toLocaleDateString('zh-CN')}`
+      : '';
 
     // Note handling
     const noteEl = document.getElementById('review-card-note');
@@ -1447,8 +1653,8 @@
     statsEl.innerHTML = [
       `<div class="review-summary-row"><span class="label">完成</span><span class="value">${total} 条</span></div>`,
       `<div class="review-summary-row"><span class="label">仍然有用</span><span class="value good">${remembered} 条（${memRate}%）</span></div>`,
-      `<div class="review-summary-row"><span class="label">再看看</span><span class="value warn">${fuzzy} 条</span></div>`,
-      `<div class="review-summary-row"><span class="label">暂时没用</span><span class="value bad">${forgot} 条</span></div>`,
+      `<div class="review-summary-row"><span class="label">再提醒我</span><span class="value warn">${fuzzy} 条</span></div>`,
+      `<div class="review-summary-row"><span class="label">不重要了</span><span class="value bad">${forgot} 条</span></div>`,
     ].join('');
 
     document.getElementById('review-summary').classList.remove('hidden');

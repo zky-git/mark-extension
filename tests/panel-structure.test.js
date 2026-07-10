@@ -65,7 +65,7 @@ assert.match(html, /id="settings-toggle-btn"[\s\S]*?data-tooltip="打开设置"/
 assert.match(panelCss, /\.icon-btn\[data-tooltip\]::after/, 'icon buttons should render custom tooltip text');
 assert.match(panelCss, /\.icon-btn\[data-tooltip\]:hover::after/, 'icon button tooltips should appear on hover');
 assert.match(panelCss, /\.icon-btn\[data-tooltip\]:focus-visible::after/, 'icon button tooltips should appear on keyboard focus');
-assert.match(html, /placeholder="搜索网页标题、划线或批注\.\.\."/u, 'search should explicitly include annotations as a searchable first-class target');
+assert.match(html, /placeholder="搜索标题、来源、摘录或备注\.\.\."/u, 'search should explicitly include excerpts and notes as searchable first-class targets');
 assert.match(gitSyncJs, /function isGitSyncConfigUsable\(config = \{\}\)/, 'Git sync UI should centralize config usability checks');
 assert.match(gitSyncJs, /function updateLastSuccessMeta\(state = \{\}\)/, 'Git sync UI should update the last successful sync summary separately from operation status');
 assert.match(gitSyncJs, /state\.lastSyncAt[\s\S]*state\.lastCommitSha/, 'Git sync summary should require both a successful sync time and commit sha');
@@ -304,16 +304,16 @@ assert.match(
 
 assert.match(
   panelJs,
-  /条想法 \/ 划线/,
-  'expanded bookmark control should frame entries as user thoughts before raw highlights'
+  /查看 \$\{highlights\.length\} 条摘录/,
+  'expanded bookmark control should frame entries as knowledge excerpts'
 );
 
-const cardTitleRuleMatch = panelCss.match(/\.card-title\s*\{[^}]*\}/);
-assert.ok(cardTitleRuleMatch, 'panel.css should style bookmark titles');
+const knowledgeCardTitleRuleMatch = panelCss.match(/\.knowledge-card \.card-title\s*\{[^}]*\}/);
+assert.ok(knowledgeCardTitleRuleMatch, 'panel.css should prioritize knowledge card titles');
 assert.match(
-  cardTitleRuleMatch[0],
-  /color:\s*var\(--text-secondary\)/,
-  'bookmark titles should be visually weaker than annotations'
+  knowledgeCardTitleRuleMatch[0],
+  /color:\s*var\(--text-primary\)/,
+  'knowledge card titles should be visually primary'
 );
 
 const highlightDeleteRuleMatch = panelCss.match(/\.highlight-delete-btn\s*\{[^}]*\}/);
@@ -396,8 +396,8 @@ assert.doesNotMatch(panelJs, /if \(!due \|\| due\.length === 0\) return;/, 'revi
 assert.match(panelJs, /showPanelNotice\('暂无待重温内容。', 'success'\)/, 'review start should explain when there is nothing to review');
 assert.match(
   panelJs,
-  /reviewBtn\.textContent = inReview \? '不再提醒' : '提醒我再看'/,
-  'highlight reminder buttons should describe the reminder subscription action'
+  /reviewBtn\.textContent = reviewDue \? '今天该看' : \(inReview \? '已加入重温' : '稍后重温'\)/,
+  'highlight reminder buttons should describe the knowledge rediscovery state'
 );
 assert.doesNotMatch(
   panelJs,
@@ -406,7 +406,7 @@ assert.doesNotMatch(
 );
 assert.match(
   panelJs,
-  /reviewBtn\.setAttribute\('aria-label', inReview \? '不再提醒这条划线' : '提醒我再看这条划线'\)/,
+  /reviewBtn\.setAttribute\('aria-label', inReview \? '管理这条摘录的重温提醒' : '将这条摘录加入重温'\)/,
   'compact highlight review buttons should keep an accessible action label'
 );
 const activeReviewBtnRuleMatch = panelCss.match(/\.highlight-review-btn\.active\s*\{[^}]*\}/);
@@ -453,7 +453,7 @@ assert.match(
 );
 assert.match(
   html,
-  /每次回顾用三档反馈：暂时没用、再看看、仍然有用/,
+  /每次重温用三档反馈：不重要了、再提醒我、仍然有用/,
   'review tooltip should frame feedback around current usefulness instead of memory testing'
 );
 assert.match(
@@ -522,15 +522,19 @@ assert.doesNotMatch(
   'panel.js should not depend on reviewTag'
 );
 
-assert.match(html, /id="score-forgot">暂时没用<\/button>/, 'low review feedback should use usefulness wording');
-assert.match(html, /id="score-fuzzy">再看看<\/button>/, 'middle review feedback should use usefulness wording');
+assert.match(html, /id="review-source"/, 'review view should expose source context');
+assert.match(html, /id="review-saved-at"/, 'review view should expose saved-at context');
+assert.match(html, /id="score-forgot">不重要了<\/button>/, 'low review feedback should use value wording');
+assert.match(html, /id="score-fuzzy">再提醒我<\/button>/, 'middle review feedback should use reminder wording');
 assert.match(html, /id="score-remembered">仍然有用 ✓<\/button>/, 'high review feedback should use usefulness wording');
+assert.doesNotMatch(html, /暂时没用/, 'old low-score wording should be replaced');
+assert.doesNotMatch(html, /再看看/, 'old medium-score wording should be replaced');
 assert.doesNotMatch(html, />没记住<\/button>/, 'review buttons should not frame feedback as memory failure');
 assert.doesNotMatch(html, />模糊<\/button>/, 'review buttons should not frame feedback as fuzzy recall');
 assert.doesNotMatch(html, />记住了 ✓<\/button>/, 'review buttons should not frame feedback as memorized recall');
 assert.match(panelJs, /<span class="label">仍然有用<\/span>/, 'review summary should use usefulness wording for high feedback');
-assert.match(panelJs, /<span class="label">再看看<\/span>/, 'review summary should use usefulness wording for middle feedback');
-assert.match(panelJs, /<span class="label">暂时没用<\/span>/, 'review summary should use usefulness wording for low feedback');
+assert.match(panelJs, /<span class="label">再提醒我<\/span>/, 'review summary should use reminder wording for middle feedback');
+assert.match(panelJs, /<span class="label">不重要了<\/span>/, 'review summary should use value wording for low feedback');
 assert.doesNotMatch(html, /复习/, 'visible side panel HTML should not use study/exam wording');
 assert.doesNotMatch(panelJs, /'[^']*复习[^']*'|"[^"]*复习[^"]*"/, 'visible side panel strings should not use study/exam wording');
 
@@ -562,5 +566,40 @@ assert.deepEqual(
 ].forEach(id => {
   assert.match(panelJs, new RegExp(`getElementById\\('${id}'\\)`), `panel.js should wire #${id}`);
 });
+
+assert.match(html, /id="workspace-tabs"/, 'panel should expose workspace tabs');
+assert.match(html, /data-workspace="library"/, 'panel should include library workspace tab');
+assert.match(html, /data-workspace="review"/, 'panel should include review workspace tab');
+assert.match(html, /data-workspace="data"/, 'panel should include data asset workspace tab');
+assert.match(html, /id="library-workspace"/, 'panel should include library workspace');
+assert.match(html, /id="data-workspace"/, 'panel should include data asset workspace');
+assert.match(panelJs, /setActiveWorkspace/, 'panel.js should manage active workspace switching');
+assert.match(panelJs, /knowledge-card/, 'bookmark items should render as knowledge cards');
+assert.match(panelJs, /highlight-preview/, 'highlight text should be rendered as excerpt preview');
+assert.match(panelJs, /稍后重温/, 'review action should use knowledge asset wording');
+assert.match(panelJs, /已加入重温/, 'active review state should use knowledge asset wording');
+assert.match(panelJs, /今天该看/, 'due review state should use knowledge asset wording');
+assert.doesNotMatch(panelJs, new RegExp('条想法 / 划线'), 'old idea/highlight wording should not be the primary card label');
+assert.match(html, /数据资产/, 'data asset workspace should be visible in markup');
+assert.match(html, /id="markdown-export-section"/, 'data workspace should include markdown export section');
+assert.match(html, /id="git-sync-asset-section"/, 'data workspace should include git sync asset section');
+assert.match(html, /id="backup-asset-section"/, 'data workspace should include backup section');
+assert.match(html, /id="copy-markdown-btn"/, 'data workspace should support copying markdown');
+assert.match(html, /同步到仓库/, 'git push wording should be user-facing');
+assert.match(html, /从仓库恢复数据/, 'git pull wording should be user-facing');
+assert.match(panelJs, /copyMarkdown/, 'panel should expose copy markdown action');
+assert.match(panelJs, /navigator\.clipboard\.writeText/, 'copy markdown should use clipboard API');
+assert.match(html, /主题显示/, 'settings should keep theme preference');
+assert.match(html, /默认高亮颜色/, 'settings should keep highlight color preference');
+assert.match(html, /按域名分组/, 'settings should keep domain grouping preference');
+assert.match(html, /唤醒收藏/, 'settings should keep review preference');
+assert.doesNotMatch(html, /<label class="settings-label">数据备份<\/label>/, 'backup should no longer be settings-only primary section');
+assert.match(html, /id="preview-mode-notice"/, 'static previews should disclose their demo data');
+assert.match(html, /预览数据/, 'static preview notice should be user-facing');
+assert.match(panelJs, /function isExtensionRuntimeAvailable\(\)/, 'panel should detect whether Chrome extension APIs are available');
+assert.match(panelJs, /function loadPreviewData\(\)/, 'panel should render demo data outside the extension runtime');
+assert.match(panelJs, /if \(!isExtensionRuntimeAvailable\(\)\)/, 'panel should avoid extension API calls in static preview mode');
+assert.match(panelCss, /\.sort-select\s*\{[^}]*appearance:\s*none/, 'sort control should use a custom compact appearance');
+assert.match(panelCss, /\.empty-state\s*\{[^}]*border:\s*1px solid var\(--border\)/, 'empty state should read as a focused first-action panel');
 
 console.log('panel structure tests passed');

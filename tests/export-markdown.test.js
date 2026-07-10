@@ -6,15 +6,14 @@ const {
 
 const bookmarks = [
   {
-    title: 'React 性能笔记',
-    url: 'https://example.com/react',
-    savedAt: Date.UTC(2026, 5, 30),
-    tags: ['技术', 'React'],
+    title: 'Python3 字典 | 菜鸟教程',
+    url: 'https://www.runoob.com/python3/python3-dictionary.html',
+    savedAt: Date.UTC(2026, 6, 7),
+    tags: ['python', '基础语法'],
     highlights: [
       {
-        text: 'memo 只解决重复渲染的一部分问题。',
-        note: '适合作为性能章节引用。',
-        savedAt: Date.UTC(2026, 5, 30),
+        text: '删除字典元素',
+        note: '列表删除单个元素可用 del。',
       },
     ],
   },
@@ -22,27 +21,26 @@ const bookmarks = [
 
 const markdown = formatBookmarksAsMarkdown(bookmarks, {
   title: 'MarkBuddy Export',
-  exportedAt: Date.UTC(2026, 5, 30),
+  exportedAt: Date.UTC(2026, 6, 7),
 });
 
-assert.match(markdown, /^# MarkBuddy Export/);
-assert.match(markdown, /Exported: 2026-06-30/);
-assert.match(markdown, /## example\.com/);
-assert.match(markdown, /### React 性能笔记/);
-assert.match(markdown, /- URL: https:\/\/example\.com\/react/);
-assert.match(markdown, /- Tags: 技术, React/);
-assert.match(markdown, /> memo 只解决重复渲染的一部分问题。/);
-assert.match(markdown, /Note: 适合作为性能章节引用。/);
-assert.match(markdown, /Source: https:\/\/example\.com\/react/);
+assert.match(markdown, /^## Python3 字典 \| 菜鸟教程/m);
+assert.match(markdown, /- Source: https:\/\//);
+assert.match(markdown, /- Saved: 2026-07-07/);
+assert.match(markdown, /- Tags: #python #基础语法/);
+assert.match(markdown, /^> 删除字典元素/m);
+assert.match(markdown, /笔记：/);
+assert.doesNotMatch(markdown, /1\. Highlight/);
+assert.doesNotMatch(markdown, /^Highlights$/m);
 
 assert.equal(
-  formatBookmarksAsMarkdown([], { exportedAt: Date.UTC(2026, 5, 30) }),
+  formatBookmarksAsMarkdown([], { exportedAt: Date.UTC(2026, 6, 7) }),
   ''
 );
 
 assert.equal(
-  buildExportFilename('MarkBuddy Export', Date.UTC(2026, 5, 30)),
-  'markbuddy-export-2026-06-30.md'
+  buildExportFilename('MarkBuddy Export', Date.UTC(2026, 6, 7)),
+  'markbuddy-export-2026-07-07.md'
 );
 
 const fallbackMarkdown = formatBookmarksAsMarkdown([
@@ -54,13 +52,12 @@ const fallbackMarkdown = formatBookmarksAsMarkdown([
       },
     ],
   },
-], { exportedAt: Date.UTC(2026, 5, 30) });
+], { exportedAt: Date.UTC(2026, 6, 7) });
 
-assert.match(fallbackMarkdown, /## unknown-source/);
-assert.match(fallbackMarkdown, /### not a url/);
+assert.match(fallbackMarkdown, /^## not a url/m);
 assert.match(fallbackMarkdown, /> 第一行\n> 第二行/);
 assert.doesNotMatch(fallbackMarkdown, /- Tags:/);
-assert.doesNotMatch(fallbackMarkdown, /Note:/);
+assert.doesNotMatch(fallbackMarkdown, /笔记：/);
 
 const structureSafeMarkdown = formatBookmarksAsMarkdown([
   {
@@ -74,10 +71,10 @@ const structureSafeMarkdown = formatBookmarksAsMarkdown([
       },
     ],
   },
-], { exportedAt: Date.UTC(2026, 5, 30) });
+], { exportedAt: Date.UTC(2026, 6, 7) });
 
-assert.match(structureSafeMarkdown, /### \\# 标题 下一行/);
-assert.match(structureSafeMarkdown, /- Tags: #tag, 换行 标签/);
-assert.match(structureSafeMarkdown, /Note:\n\n> 第一条\n> - 不应变成导出文档的列表/);
+assert.match(structureSafeMarkdown, /^## \\# 标题 下一行/m);
+assert.match(structureSafeMarkdown, /- Tags: #tag #换行 标签/);
+assert.match(structureSafeMarkdown, /笔记：\n\n> 第一条\n> - 不应变成导出文档的列表/);
 
 console.log('export-markdown tests passed');

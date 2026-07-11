@@ -276,18 +276,14 @@ assert.match(
   'deleting a highlight annotation should show a success message'
 );
 
-const highlightsListOpenRuleMatch = panelCss.match(/\.highlights-list\.open\s*\{[^}]*\}/);
-assert.ok(highlightsListOpenRuleMatch, 'panel.css should style expanded highlight lists');
-assert.doesNotMatch(
-  highlightsListOpenRuleMatch[0],
-  /max-height:\s*600px/,
-  'expanded highlight lists should not clip long annotations at 600px'
-);
+const highlightsListRuleMatch = panelCss.match(/\.highlights-list\s*\{[^}]*\}/);
+assert.ok(highlightsListRuleMatch, 'panel.css should style the permanent excerpt list');
 assert.match(
-  highlightsListOpenRuleMatch[0],
-  /max-height:\s*9999px/,
-  'expanded highlight lists should leave enough height for long annotations'
+  highlightsListRuleMatch[0],
+  /border-top:\s*1px solid var\(--border\)/,
+  'the permanent excerpt list should be separated from page metadata'
 );
+assert.doesNotMatch(panelCss, /\.highlights-list\.open/, 'excerpt lists should not depend on an open state');
 
 const highlightItemRuleMatch = panelCss.match(/\.highlight-item\s*\{[^}]*\}/);
 assert.ok(highlightItemRuleMatch, 'panel.css should style highlight list items');
@@ -302,11 +298,7 @@ assert.match(
   'highlight list items should reserve right-side space for the fixed delete button'
 );
 
-assert.match(
-  panelJs,
-  /查看 \$\{highlights\.length\} 条摘录/,
-  'expanded bookmark control should frame entries as knowledge excerpts'
-);
+assert.doesNotMatch(panelJs, /card-expand-btn/, 'cards should not render an expand control');
 
 const knowledgeCardTitleRuleMatch = panelCss.match(/\.knowledge-card \.card-title\s*\{[^}]*\}/);
 assert.ok(knowledgeCardTitleRuleMatch, 'panel.css should prioritize knowledge card titles');
@@ -481,26 +473,7 @@ assert.match(
   /已有划线开启提醒，请先设为不再提醒后再关闭。/,
   'turning review off should explain why it is blocked when highlights are in review'
 );
-assert.match(
-  panelJs,
-  /expandedBookmarkUrls = new Set\(\)/,
-  'panel.js should track expanded bookmark highlight lists across reloads'
-);
-assert.match(
-  panelJs,
-  /expandedBookmarkUrls\.add\(bm\.url\)/,
-  'expanding a highlight list should remember the bookmark URL'
-);
-assert.match(
-  panelJs,
-  /expandedBookmarkUrls\.delete\(bm\.url\)/,
-  'collapsing a highlight list should forget the bookmark URL'
-);
-assert.match(
-  panelJs,
-  /expandedBookmarkUrls\.has\(bm\.url\)/,
-  'rendering a bookmark should restore its expanded highlight list state'
-);
+assert.doesNotMatch(panelJs, /expandedBookmarkUrls/, 'cards should not keep expansion state');
 assert.doesNotMatch(
   panelJs,
   /toggleReviewTag\(h\.tags, settings\.reviewTag\)/,
@@ -575,7 +548,8 @@ assert.match(html, /id="library-workspace"/, 'panel should include library works
 assert.match(html, /id="data-workspace"/, 'panel should include data asset workspace');
 assert.match(panelJs, /setActiveWorkspace/, 'panel.js should manage active workspace switching');
 assert.match(panelJs, /knowledge-card/, 'bookmark items should render as knowledge cards');
-assert.match(panelJs, /highlight-preview/, 'highlight text should be rendered as excerpt preview');
+assert.doesNotMatch(panelJs, /highlight-preview/, 'cards should not render a duplicate excerpt preview list');
+assert.match(panelJs, /hlList\.className = 'highlights-list'/, 'cards should keep one detailed excerpt list');
 assert.match(panelJs, /稍后重温/, 'review action should use knowledge asset wording');
 assert.match(panelJs, /已加入重温/, 'active review state should use knowledge asset wording');
 assert.match(panelJs, /今天该看/, 'due review state should use knowledge asset wording');

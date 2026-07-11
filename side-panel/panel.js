@@ -14,7 +14,6 @@
   let groupByDomain = true; // default: group enabled
   let sortBy = 'time-desc'; // default: newest first
   let panelNoticeTimer = null;
-  let expandedBookmarkUrls = new Set();
   let activeWorkspace = 'library';
 
   // Review state
@@ -855,55 +854,21 @@
 
     card.appendChild(tagsRow);
 
-    // ── Excerpt preview ──
+    // ── Excerpt list ──
     const highlights = bm.highlights || [];
+    const hlList = document.createElement('div');
+    hlList.className = 'highlights-list';
 
-    const previewList = document.createElement('div');
-    previewList.className = 'highlight-preview-list';
-    highlights.slice(0, 3).forEach(h => {
-      const preview = document.createElement('div');
-      preview.className = 'highlight-preview';
-
-      const marker = document.createElement('span');
-      marker.className = 'highlight-preview-marker';
-      marker.style.backgroundColor = h.color || '#FFD700';
-      preview.appendChild(marker);
-
-      const excerpt = document.createElement('span');
-      excerpt.className = 'highlight-preview-text';
-      excerpt.textContent = h.text || '';
-      preview.appendChild(excerpt);
-
-      if (h.note) {
-        const note = document.createElement('span');
-        note.className = 'highlight-preview-note';
-        note.textContent = `备注：${h.note}`;
-        preview.appendChild(note);
-      }
-      previewList.appendChild(preview);
-    });
-
-    if (highlights.length > 3) {
-      const more = document.createElement('button');
-      more.className = 'highlight-preview-more';
-      more.type = 'button';
-      more.textContent = `还有 ${highlights.length - 3} 条摘录`;
-      previewList.appendChild(more);
+    if (highlights.length > 0) {
+      highlights.forEach(h => {
+        const item = buildHighlightItem(h, bm.url);
+        hlList.appendChild(item);
+      });
+      card.appendChild(hlList);
     }
-    card.appendChild(previewList);
 
     const footer = document.createElement('div');
     footer.className = 'card-footer knowledge-actions';
-
-    const expandBtn = document.createElement('button');
-    expandBtn.className = 'card-expand-btn';
-    expandBtn.innerHTML = `查看 ${highlights.length} 条摘录 <span class="expand-arrow">▼</span>`;
-    if (highlights.length === 0) {
-      expandBtn.style.color = 'var(--text-muted)';
-      expandBtn.style.cursor = 'default';
-    }
-
-    footer.appendChild(expandBtn);
 
     const exportBtn = document.createElement('button');
     exportBtn.className = 'card-action-btn card-export-btn';
@@ -920,54 +885,8 @@
       await exportBookmarks('single', bm);
     });
     footer.appendChild(exportBtn);
-
     card.appendChild(footer);
 
-    // Highlights list (collapsible)
-    const hlList = document.createElement('div');
-    hlList.className = 'highlights-list';
-
-    if (highlights.length > 0) {
-      highlights.forEach(h => {
-        const item = buildHighlightItem(h, bm.url);
-        hlList.appendChild(item);
-      });
-
-      expandBtn.addEventListener('click', () => {
-        const isOpen = hlList.classList.toggle('open');
-        expandBtn.classList.toggle('expanded', isOpen);
-        if (isOpen) {
-          expandedBookmarkUrls.add(bm.url);
-        } else {
-          expandedBookmarkUrls.delete(bm.url);
-        }
-      });
-
-      previewList.querySelector('.highlight-preview-more')?.addEventListener('click', () => {
-        hlList.classList.add('open');
-        expandBtn.classList.add('expanded');
-        expandedBookmarkUrls.add(bm.url);
-      });
-
-      // Auto-expand if search matches a highlight or its note
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        const hasMatch = highlights.some(h => 
-          h.text?.toLowerCase().includes(q) || h.note?.toLowerCase().includes(q)
-        );
-        if (hasMatch) {
-          hlList.classList.add('open');
-          expandBtn.classList.add('expanded');
-        }
-      }
-
-      if (expandedBookmarkUrls.has(bm.url)) {
-        hlList.classList.add('open');
-        expandBtn.classList.add('expanded');
-      }
-    }
-
-    card.appendChild(hlList);
     return card;
   }
 

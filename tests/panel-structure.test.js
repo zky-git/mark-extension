@@ -34,7 +34,7 @@ function assertContains(id) {
   'git-sync-clear-btn',
   'git-sync-last-success',
   'git-sync-status',
-  'review-start-btn',
+  'review-workspace-tab-count',
   'review-mode',
   'review-jump-wrap',
   'review-score-btns',
@@ -139,9 +139,8 @@ assert.match(panelCss, /\.git-sync-section\[open\] \.git-sync-chevron\s*\{[^}]*r
 assert.match(panelCss, /\.git-sync-summary \.settings-help\s*\{[^}]*margin-top:\s*4px/, 'Git sync description should use compact title spacing');
 assert.match(panelCss, /\.git-sync-token-tip/, 'panel.css should style the Token help tip');
 assert.match(panelCss, /\.git-sync-field input\[readonly\]\s*\{[^}]*background:\s*var\(--bg-surface\)/, 'read-only Git sync fields should look disabled');
-assert.match(html, /id="review-start-btn">看看这些<\/button>/, 'review banner button should invite lightweight rediscovery');
-assert.match(html, /class="review-banner-icon">🔔<\/span>/, 'review banner should use a reminder icon instead of a study icon');
-assert.match(html, /id="review-banner-text">今日重温 0 条<\/span>/, 'review banner should frame due items as rediscovery');
+assert.doesNotMatch(html, /id="review-banner"/, 'review count should not render in a separate banner');
+assert.doesNotMatch(html, /id="review-start-btn"/, 'review tab should replace the standalone review banner action');
 
 const searchInputMatch = html.match(/<input\b(?=[^>]*\bid="search-input")[^>]*>/);
 assert.ok(searchInputMatch, 'panel.html should contain #search-input input');
@@ -543,10 +542,13 @@ assert.deepEqual(
 assert.match(html, /id="workspace-tabs"/, 'panel should expose workspace tabs');
 assert.match(html, /data-workspace="library"/, 'panel should include library workspace tab');
 assert.match(html, /data-workspace="review"/, 'panel should include review workspace tab');
+assert.match(html, /今日重温<span id="review-workspace-tab-count">（0）<\/span>/, 'review tab should reserve a zero-count label');
 assert.match(html, /data-workspace="data"/, 'panel should include data asset workspace tab');
 assert.match(html, /id="library-workspace"/, 'panel should include library workspace');
 assert.match(html, /id="data-workspace"/, 'panel should include data asset workspace');
 assert.match(panelJs, /setActiveWorkspace/, 'panel.js should manage active workspace switching');
+assert.match(panelJs, /async function updateReviewTabCount\(\)/, 'panel should refresh the review tab count');
+assert.match(panelJs, /reviewTabCount\.textContent = `（\$\{due\?\.length \|\| 0\}）`/, 'review tab should show the due count in parentheses');
 assert.match(panelJs, /knowledge-card/, 'bookmark items should render as knowledge cards');
 assert.doesNotMatch(panelJs, /highlight-preview/, 'cards should not render a duplicate excerpt preview list');
 assert.match(panelJs, /hlList\.className = 'highlights-list'/, 'cards should keep one detailed excerpt list');

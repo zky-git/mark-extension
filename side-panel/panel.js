@@ -195,8 +195,8 @@
     renderList();
     updateStats();
 
-    // Refresh review banner count
-    updateReviewBanner();
+    // Refresh review tab count
+    updateReviewTabCount();
   }
 
   function loadPreviewData() {
@@ -230,7 +230,7 @@
     renderColorGrid();
     renderList();
     updateStats();
-    updateReviewBanner();
+    updateReviewTabCount();
   }
 
 
@@ -1429,7 +1429,7 @@
       settings.reviewEnabled = enabled;
       await sendMessage('SAVE_SETTINGS', settings);
       renderList();
-      updateReviewBanner();
+      updateReviewTabCount();
     });
   }
 
@@ -1445,23 +1445,17 @@
     });
   }
 
-  // ─── Review Banner ────────────────────────────────────────────────────────────
+  // ─── Review Tab Count ─────────────────────────────────────────────────────────
 
-  async function updateReviewBanner() {
-    const banner = document.getElementById('review-banner');
-    const bannerText = document.getElementById('review-banner-text');
-    if (!banner) return;
+  async function updateReviewTabCount() {
+    const reviewTabCount = document.getElementById('review-workspace-tab-count');
+    if (!reviewTabCount) return;
     if (!isReviewFeatureEnabled()) {
-      banner.classList.add('hidden');
+      reviewTabCount.textContent = '（0）';
       return;
     }
     const due = await sendMessage('GET_DUE_REVIEWS');
-    if (due && due.length > 0) {
-      bannerText.textContent = `今日重温 ${due.length} 条`;
-      banner.classList.remove('hidden');
-    } else {
-      banner.classList.add('hidden');
-    }
+    reviewTabCount.textContent = `（${due?.length || 0}）`;
   }
 
   // ─── Review Mode ──────────────────────────────────────────────────────────────
@@ -1483,7 +1477,7 @@
     }
     if (due.length === 0) {
       showPanelNotice('暂无待重温内容。', 'success');
-      updateReviewBanner();
+      updateReviewTabCount();
       return;
     }
 
@@ -1582,16 +1576,14 @@
 
   // ─── Review Event Listeners ───────────────────────────────────────────────────
 
-  document.getElementById('review-start-btn').addEventListener('click', startReviewMode);
-
   document.getElementById('review-exit-btn').addEventListener('click', () => {
     showMainView();
-    updateReviewBanner();
+    updateReviewTabCount();
   });
 
   document.getElementById('review-summary-close-btn').addEventListener('click', () => {
     showMainView();
-    updateReviewBanner();
+    updateReviewTabCount();
   });
 
   document.getElementById('score-remembered').addEventListener('click', () => submitReview(5));

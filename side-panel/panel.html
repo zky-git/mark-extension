@@ -57,7 +57,7 @@
 
   <nav class="workspace-tabs" id="workspace-tabs" aria-label="主工作区">
     <button class="workspace-tab active" type="button" data-workspace="library" aria-selected="true">摘录库</button>
-    <button class="workspace-tab" type="button" data-workspace="review" aria-selected="false">今日重温</button>
+    <button class="workspace-tab" type="button" data-workspace="review" aria-selected="false">今日重温<span id="review-workspace-tab-count">（0）</span></button>
     <button class="workspace-tab" type="button" data-workspace="data" aria-selected="false">数据资产</button>
   </nav>
 
@@ -200,13 +200,6 @@
   </div>
 
   <section class="workspace library-workspace" id="library-workspace" aria-label="摘录库">
-  <!-- Review Banner (hidden when no due items) -->
-  <div class="review-banner hidden" id="review-banner">
-    <span class="review-banner-icon">🔔</span>
-    <span class="review-banner-text" id="review-banner-text">今日重温 0 条</span>
-    <button class="review-banner-btn" id="review-start-btn">看看这些</button>
-  </div>
-
   <!-- Search + Filter -->
   <div class="search-bar-wrap">
     <div class="search-bar">

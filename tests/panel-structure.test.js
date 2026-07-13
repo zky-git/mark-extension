@@ -15,7 +15,6 @@ function assertContains(id) {
 
 [
   'git-sync-quick-btn',
-  'export-toggle-btn',
   'export-dialog',
   'export-filtered-btn',
   'export-all-btn',
@@ -55,9 +54,14 @@ assert.match(html, /class="git-sync-cloud"/, 'quick Git sync icon should use a c
 assert.match(html, /class="git-sync-transfer"/, 'quick Git sync icon should use a lighter upload/download transfer symbol');
 assert.match(html, /class="git-sync-state git-sync-state-success"/, 'quick Git sync button should include a success check state');
 assert.match(html, /class="git-sync-state git-sync-state-error"/, 'quick Git sync button should include an error state');
-assert.match(html, /id="export-toggle-btn"[\s\S]*?data-tooltip="导出收藏为 Markdown"/, 'export button should explain its action');
+assert.doesNotMatch(html, /id="export-toggle-btn"/, 'top-level tab bar export button should be removed');
 assert.match(html, /id="settings-toggle-btn"[\s\S]*?data-tooltip="打开设置"/, 'settings button should explain its action');
-['git-sync-quick-btn', 'export-toggle-btn', 'settings-toggle-btn'].forEach(id => {
+assert.doesNotMatch(
+  html,
+  /<div class="header-actions">[\s\S]*?id="export-toggle-btn"[\s\S]*?<\/div>\s*<\/header>/,
+  'export button should move out of the header actions'
+);
+['git-sync-quick-btn', 'settings-toggle-btn'].forEach(id => {
   const buttonMatch = html.match(new RegExp(`<button\\b(?=[^>]*\\bid="${id}")[^>]*>`));
   assert.ok(buttonMatch, `panel.html should contain #${id} button`);
   assert.doesNotMatch(buttonMatch[0], /\btitle=/, `#${id} should not use native title when custom tooltip is present`);
@@ -65,6 +69,8 @@ assert.match(html, /id="settings-toggle-btn"[\s\S]*?data-tooltip="打开设置"/
 assert.match(panelCss, /\.icon-btn\[data-tooltip\]::after/, 'icon buttons should render custom tooltip text');
 assert.match(panelCss, /\.icon-btn\[data-tooltip\]:hover::after/, 'icon button tooltips should appear on hover');
 assert.match(panelCss, /\.icon-btn\[data-tooltip\]:focus-visible::after/, 'icon button tooltips should appear on keyboard focus');
+assert.doesNotMatch(html, /<div class="workspace-tabbar">[\s\S]*?id="export-toggle-btn"[\s\S]*?<\/div>/, 'tab bar should not render a top-level export action');
+assert.match(panelCss, /\.workspace-tabs\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*1fr\)/, 'workspace tabs should keep three equal tabs');
 assert.match(html, /placeholder="搜索标题、来源、摘录或备注\.\.\."/u, 'search should explicitly include excerpts and notes as searchable first-class targets');
 assert.match(gitSyncJs, /function isGitSyncConfigUsable\(config = \{\}\)/, 'Git sync UI should centralize config usability checks');
 assert.match(gitSyncJs, /function updateLastSuccessMeta\(state = \{\}\)/, 'Git sync UI should update the last successful sync summary separately from operation status');
@@ -316,13 +322,55 @@ assert.match(
 );
 assert.match(
   highlightDeleteRuleMatch[0],
-  /top:\s*8px/,
-  'highlight delete button should align to the top of each highlight item'
+  /top:\s*50%/,
+  'highlight delete button should vertically center within each highlight item'
 );
 assert.match(
   highlightDeleteRuleMatch[0],
   /right:\s*8px/,
   'highlight delete button should stay pinned to the right edge of each highlight item'
+);
+assert.doesNotMatch(
+  highlightDeleteRuleMatch[0],
+  /opacity:\s*0/,
+  'highlight delete button should be explicitly visible without row hover'
+);
+assert.match(
+  highlightDeleteRuleMatch[0],
+  /background:\s*transparent/,
+  'highlight delete button should stay visually quiet by default'
+);
+assert.match(
+  highlightDeleteRuleMatch[0],
+  /color:\s*var\(--text-muted\)/,
+  'highlight delete button icon should be gray by default'
+);
+assert.match(
+  highlightDeleteRuleMatch[0],
+  /display:\s*inline-flex/,
+  'highlight delete button should center the icon inside the hit area'
+);
+assert.match(
+  highlightDeleteRuleMatch[0],
+  /align-items:\s*center/,
+  'highlight delete button icon should be vertically centered inside the button'
+);
+assert.match(
+  highlightDeleteRuleMatch[0],
+  /transform:\s*translateY\(-50%\)/,
+  'highlight delete button should compensate for 50 percent top positioning'
+);
+const highlightDeleteHoverRuleMatch = panelCss.match(/\.highlight-delete-btn:hover\s*\{[^}]*\}/);
+assert.ok(highlightDeleteHoverRuleMatch, 'panel.css should style highlight delete hover state');
+assert.match(
+  highlightDeleteHoverRuleMatch[0],
+  /background:\s*rgba\(239,\s*68,\s*68,\s*0\.18\)/,
+  'highlight delete button should show a red background only on hover'
+);
+assert.match(
+  highlightDeleteHoverRuleMatch[0],
+  /color:\s*var\(--danger\)/,
+  'highlight delete button should turn red only on hover'
 );
 
 assert.match(panelCss, /:root\[data-theme="dark"\]/, 'panel.css should allow a manual dark theme override');
@@ -407,6 +455,21 @@ assert.match(
   /#ef4444|239,\s*68,\s*68|var\(--danger\)/,
   'active reminder button should use a red danger treatment for 不再提醒'
 );
+const highlightReviewLayoutRuleMatch = panelCss.match(/\.highlight-item\s*\{[^}]*\}/);
+assert.ok(highlightReviewLayoutRuleMatch, 'panel.css should style highlight items');
+assert.match(highlightReviewLayoutRuleMatch[0], /align-items:\s*center/, 'highlight item content should vertically center text and actions');
+const highlightReviewButtonRuleMatch = panelCss.match(/\.highlight-review-btn\s*\{[^}]*\}/);
+assert.ok(highlightReviewButtonRuleMatch, 'panel.css should style highlight review buttons');
+assert.match(highlightReviewButtonRuleMatch[0], /margin-left:\s*auto/, 'highlight review button should sit on the right side of the row');
+const cardTagsRuleMatch = panelCss.match(/\.card-tags\s*\{[^}]*\}/);
+assert.ok(cardTagsRuleMatch, 'panel.css should style the card tag row');
+assert.match(cardTagsRuleMatch[0], /align-items:\s*center/, 'card tag row should vertically align tags and the card export button');
+assert.match(cardTagsRuleMatch[0], /flex-wrap:\s*nowrap/, 'card tag row should keep the export action on the same row');
+const cardExportRuleMatch = panelCss.match(/\.card-export-btn\s*\{[^}]*\}/);
+assert.ok(cardExportRuleMatch, 'panel.css should style per-card export buttons');
+assert.match(cardExportRuleMatch[0], /margin-left:\s*auto/, 'per-card export button should sit at the right side of the tag row');
+assert.match(panelJs, /tagsRow\.appendChild\(exportBtn\)/, 'per-card export button should render on the tag row');
+assert.doesNotMatch(panelJs, /footer\.appendChild\(exportBtn\)/, 'per-card export button should no longer render in the card footer');
 assert.match(
   panelJs,
   /const inReview = h\.review\?\.enabled === true/,
@@ -532,7 +595,6 @@ assert.deepEqual(
   'backup-export-btn',
   'backup-import-btn',
   'backup-file-input',
-  'export-toggle-btn',
   'export-filtered-btn',
   'export-all-btn',
 ].forEach(id => {

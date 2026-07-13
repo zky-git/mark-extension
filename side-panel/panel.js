@@ -852,24 +852,6 @@
     addTagBtn.addEventListener('click', () => openTagModal(bm));
     tagsRow.appendChild(addTagBtn);
 
-    card.appendChild(tagsRow);
-
-    // ── Excerpt list ──
-    const highlights = bm.highlights || [];
-    const hlList = document.createElement('div');
-    hlList.className = 'highlights-list';
-
-    if (highlights.length > 0) {
-      highlights.forEach(h => {
-        const item = buildHighlightItem(h, bm.url);
-        hlList.appendChild(item);
-      });
-      card.appendChild(hlList);
-    }
-
-    const footer = document.createElement('div');
-    footer.className = 'card-footer knowledge-actions';
-
     const exportBtn = document.createElement('button');
     exportBtn.className = 'card-action-btn card-export-btn';
     exportBtn.title = '导出该网页为 Markdown';
@@ -884,8 +866,22 @@
       e.stopPropagation();
       await exportBookmarks('single', bm);
     });
-    footer.appendChild(exportBtn);
-    card.appendChild(footer);
+    tagsRow.appendChild(exportBtn);
+
+    card.appendChild(tagsRow);
+
+    // ── Excerpt list ──
+    const highlights = bm.highlights || [];
+    const hlList = document.createElement('div');
+    hlList.className = 'highlights-list';
+
+    if (highlights.length > 0) {
+      highlights.forEach(h => {
+        const item = buildHighlightItem(h, bm.url);
+        hlList.appendChild(item);
+      });
+      card.appendChild(hlList);
+    }
 
     return card;
   }
@@ -1279,12 +1275,6 @@
   });
 
   // Markdown export
-  document.getElementById('export-toggle-btn').addEventListener('click', () => {
-    refreshExportDialogText();
-    setExportStatus('');
-    document.getElementById('export-dialog').showModal();
-  });
-
   document.getElementById('export-close-btn').addEventListener('click', () => {
     document.getElementById('export-dialog').close();
   });

@@ -40,13 +40,6 @@
           </svg>
         </span>
       </button>
-      <button class="icon-btn" id="export-toggle-btn" aria-label="导出 Markdown" data-tooltip="导出收藏为 Markdown">
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="7 10 12 15 17 10"></polyline>
-          <line x1="12" y1="15" x2="12" y2="3"></line>
-        </svg>
-      </button>
       <button class="icon-btn" id="settings-toggle-btn" aria-label="打开设置" data-tooltip="打开设置">
         ⚙️
       </button>
@@ -55,11 +48,13 @@
 
   <div class="panel-notice-host" id="panel-notice-host"></div>
 
-  <nav class="workspace-tabs" id="workspace-tabs" aria-label="主工作区">
-    <button class="workspace-tab active" type="button" data-workspace="library" aria-selected="true">摘录库</button>
-    <button class="workspace-tab" type="button" data-workspace="review" aria-selected="false">今日重温<span id="review-workspace-tab-count">（0）</span></button>
-    <button class="workspace-tab" type="button" data-workspace="data" aria-selected="false">数据资产</button>
-  </nav>
+  <div class="workspace-tabbar">
+    <nav class="workspace-tabs" id="workspace-tabs" aria-label="主工作区">
+      <button class="workspace-tab active" type="button" data-workspace="library" aria-selected="true">摘录库</button>
+      <button class="workspace-tab" type="button" data-workspace="review" aria-selected="false">今日重温<span id="review-workspace-tab-count">（0）</span></button>
+      <button class="workspace-tab" type="button" data-workspace="data" aria-selected="false">数据资产</button>
+    </nav>
+  </div>
 
   <p class="preview-mode-notice hidden" id="preview-mode-notice" role="status">预览数据：在 Chrome 扩展中会显示你的真实摘录。</p>
 

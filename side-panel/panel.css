@@ -104,13 +104,21 @@ body {
 
 /* ─── Workspaces ───────────────────────────────────────────────────────────── */
 
+.workspace-tabbar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 6px;
+  background: var(--bg);
+  flex-shrink: 0;
+}
+
 .workspace-tabs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 4px;
-  padding: 8px 12px 6px;
-  background: var(--bg);
-  flex-shrink: 0;
+  min-width: 0;
 }
 
 .preview-mode-notice {
@@ -1360,7 +1368,8 @@ body {
 /* Tags on card */
 .card-tags {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  flex-wrap: nowrap;
   gap: 4px;
   padding: 0 12px 8px;
 }
@@ -1468,6 +1477,8 @@ body {
 
 .card-export-btn {
   color: var(--text-muted);
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .card-export-btn:hover {
@@ -1611,7 +1622,7 @@ body {
 .highlight-item {
   position: relative;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
   padding: 0;
   padding-right: 36px;
@@ -1799,6 +1810,7 @@ body {
 
 .highlight-review-btn {
   min-width: 54px;
+  margin-left: auto;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: transparent;
@@ -1826,29 +1838,31 @@ body {
 
 .highlight-delete-btn {
   position: absolute;
-  top: 8px;
+  top: 50%;
   right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
   background: transparent;
   border: none;
   border-radius: 6px;
   color: var(--text-muted);
   font-size: 16px;
   cursor: pointer;
-  padding: 2px 7px;
+  padding: 0;
   flex-shrink: 0;
   line-height: 1;
   transition: background var(--transition), color var(--transition), transform 0.12s;
-  opacity: 0;
-}
-
-.highlight-item:hover .highlight-delete-btn {
+  transform: translateY(-50%);
   opacity: 1;
 }
 
 .highlight-delete-btn:hover {
-  background: rgba(239, 68, 68, 0.12);
+  background: rgba(239, 68, 68, 0.18);
   color: var(--danger);
-  transform: scale(1.1);
+  transform: translateY(-50%) scale(1.1);
 }
 
 /* Search highlight */

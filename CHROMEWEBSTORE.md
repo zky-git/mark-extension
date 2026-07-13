@@ -1,6 +1,6 @@
 # Chrome Web Store Listing — MarkBuddy
 
-> Last Updated: 2026-07-06
+> Last Updated: 2026-07-12
 
 ## Store Listing
 
@@ -17,12 +17,12 @@ FEATURES
 • Text Highlighting — Highlight text on any page using the floating toolbar, context menu, or keyboard shortcut.
 • Find-Back Library — Search page titles, URLs, highlight text, and notes from the side panel.
 • Highlight Color Customization — Choose from a palette of highlighting colors.
-• Side Panel Organizer — View saved pages, highlights, tags, notes, and reminder status in a side panel.
+• Side Panel Organizer — View saved pages, highlights, tags, notes, and reminder status in a three-tab side panel.
 • Auto-Restore — Highlights are automatically re-applied when you visit the webpage again.
 • Light Recovery — If page text shifts slightly, MarkBuddy can recover highlights from the saved text snapshot.
 • Optional Rediscovery Reminders — Add only important highlights to a lightweight SM-2 reminder queue.
-• Due Count Badges — See how many highlights are ready to revisit on the extension icon and floating page trigger.
-• Markdown Export — Export all, filtered, or single-page highlights to Markdown for note apps.
+• Due Count Badges — See how many highlights are ready to revisit on the Today tab, extension icon, and floating page trigger.
+• Markdown Export — Export all, filtered, or single-page highlights to Markdown for note apps from the Data Assets area or each page card.
 • JSON Backup — Back up and restore local MarkBuddy data.
 • Optional GitHub Sync — Sync MarkBuddy data to a user-owned GitHub repository file for backup and version history, with a quick sync button when configured.
 • Keyboard Shortcuts — Open the side panel or save the current selection quickly.
@@ -31,7 +31,7 @@ FEATURES
 HOW TO USE
 1. Click the extension icon or press Alt+Shift+M to open the MarkBuddy side panel.
 2. Select text on a webpage, then use the floating toolbar, right-click menu, or Alt+Shift+H to save a highlight.
-3. Use the side panel to search, filter, add notes, jump back to the source, revisit selected highlights, or export your data.
+3. Use the side panel to search, filter, add notes, jump back to the source, revisit selected highlights, or manage exports from the Data Assets tab.
 
 PRIVACY
 By default, all your data (bookmarks, highlights, notes, colors, reminder state, and settings) is stored locally on your device using Chrome's extension storage API. MarkBuddy does not collect, transmit, or share your personal data or browsing history with the developer or third-party analytics services.
@@ -73,7 +73,7 @@ Chinese (Simplified) / English
 | Small Promo Tile [RECOMMENDED] | 440×280 | ⬜ Not created | |
 
 ### Screenshot Notes
-- **Screenshot 1**: Side panel open on a highlighted article, demonstrating search, tags, notes, and source jump.
+- **Screenshot 1**: Side panel open on a highlighted article, demonstrating search, tags, inline reminders, per-card export, notes, and source jump.
 - **Screenshot 2**: Review mode showing an opt-in highlight review card.
 - **Screenshot 3**: Export/backup controls showing Markdown export and JSON backup.
 
@@ -132,6 +132,7 @@ Chinese (Simplified) / English
 
 | Version | Date | Changes | Status |
 |---------|------|---------|--------|
+| 1.4.0 | 2026-07-12 | Polishes the side panel information architecture: due review count appears in the Today tab, export actions are moved out of the global tab bar, per-card export sits on the tag row, and highlight reminder/delete controls are aligned inline. | Draft |
 | 1.3.0 | 2026-07-06 | Adds optional GitHub repository sync for MarkBuddy JSON data, including manual upload/restore, quick sync, token guidance, fixed sync path, no-change commit skipping, top-level sync notices, and conflict detection. | Draft |
 | 1.2.0 | 2026-07-02 | Aligns the product around find-back reading workflows, adds Markdown export, JSON backup/restore, opt-in rediscovery reminders, due-count badges, light highlight recovery, and keyboard shortcuts. | Draft |
 | 1.1.0 | 2026-06-29 | Adds SM-2 review mode, SPA highlight restoration, sorting, slide-over settings, and custom confirmation dialogs. | Draft |
